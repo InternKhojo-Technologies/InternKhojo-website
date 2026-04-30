@@ -197,7 +197,7 @@ export default function ProfilePage() {
         .maybeSingle();
       if (p) {
         setName(p.name || "");
-        setRole(p.role || "candidate");
+        setRole(p.role);
         setBio(p.bio || "");
         setSkills(Array.isArray(p.skills) ? p.skills : []);
         setLinkedinUrl(p.links || "");
@@ -255,6 +255,11 @@ export default function ProfilePage() {
 
   const saveAll = async () => {
     const t = toast.loading("Syncing Identity...");
+    if (!role) {
+      toast.error("Role not loaded yet");
+      return;
+    }
+
     try {
       let finalAvatar = avatarUrl;
       if (avatarFile) {
@@ -313,7 +318,7 @@ export default function ProfilePage() {
           country,
           avatar_url: finalAvatar,
           contact_number: formattedPersonalPhone,
-          role: role || "candidate",
+          role: role,
           company_id: isRecruiter ? currentCompanyId : null,
           college,
           cgpa: !isRecruiter && cgpa !== "" ? parseFloat(cgpa) : null,
