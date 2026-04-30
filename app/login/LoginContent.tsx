@@ -24,23 +24,45 @@ export default function LoginContent() {
       if (!session) return;
 
       const user = session.user;
-      const role =
-        searchParams.get("role") ||
-        localStorage.getItem("signup_role") ||
-        "candidate";
-
-      const finalRole = role.toLowerCase();
-
-      const { error } = await supabase.from("profiles").upsert({
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata?.full_name || "",
-        role: finalRole,
-      });
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
 
       if (error) {
-        toast.error("Profile sync failed");
+        toast.error("Error fetching profile");
+        return;
       }
+      // 🔥 If profile doesn't exist → create it USING signup_role
+      if (!profile) {
+        const savedRole =
+          localStorage.getItem("signup_role") ||
+          searchParams.get("role") ||
+          "candidate";
+
+        const { error: insertError } = await supabase.from("profiles").insert({
+          id: user.id,
+          email: user.email,
+          role: savedRole,
+        });
+
+        if (insertError) {
+          toast.error("Profile creation failed");
+        }
+
+        localStorage.removeItem("signup_role");
+
+        if (savedRole === "recruiter") {
+          router.push("/dashboard/recruiter");
+        } else {
+          router.push("/find/jobs");
+        }
+
+        return;
+      }
+
+      const finalRole = profile.role;
 
       localStorage.removeItem("signup_role");
 
@@ -74,7 +96,7 @@ export default function LoginContent() {
     }
 
     toast.success("Welcome back");
-    router.push(redirect);
+    router.refresh();
   };
 
   const handleGoogleLogin = async () => {
