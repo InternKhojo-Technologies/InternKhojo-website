@@ -80,7 +80,9 @@ export default function LoginContent() {
   const handleGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${location.origin}/login` },
+      options: {
+        redirectTo: `https://intern-khojo-website-ghfx.vercel.app/login`,
+      },
     });
 
     if (error) toast.error("Google login failed");

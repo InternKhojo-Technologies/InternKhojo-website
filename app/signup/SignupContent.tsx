@@ -59,7 +59,7 @@ export default function SignupContent() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${location.origin}/login`,
+        redirectTo: `https://intern-khojo-website-ghfx.vercel.app/login`,
       },
     });
 
