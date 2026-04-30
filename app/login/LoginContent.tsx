@@ -132,7 +132,7 @@ export default function LoginContent() {
         </button>
 
         <button
-          onClick={handleGoogle}
+          onClick={handleGoogleLogin}
           className="w-full mt-4 border py-3 rounded-xl"
         >
           Continue with Google
