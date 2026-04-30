@@ -77,11 +77,17 @@ export default function LoginContent() {
     router.push(redirect);
   };
 
-  const handleGoogle = async () => {
+  const handleGoogleLogin = async () => {
+    const isLocalhost = window.location.hostname === "localhost";
+
+    const redirectUrl = isLocalhost
+      ? "http://localhost:3000/login"
+      : "https://internkhojo.com/login";
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `https://intern-khojo-website-ghfx.vercel.app/login`,
+        redirectTo: redirectUrl,
       },
     });
 

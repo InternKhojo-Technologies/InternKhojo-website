@@ -40,11 +40,21 @@ export default function SignupContent() {
     }
 
     if (data.user) {
-      await supabase.from("profiles").upsert({
-        id: data.user.id,
-        email: data.user.email,
-        role: role.toLowerCase(),
-      });
+      // 🔥 Check if profile already exists
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      // 🔥 Only create profile ONCE
+      if (!existingProfile) {
+        await supabase.from("profiles").insert({
+          id: data.user.id,
+          email: data.user.email,
+          role: role.toLowerCase(),
+        });
+      }
 
       toast.success("Account created successfully!");
       router.push(`/login?role=${role}`);
@@ -56,10 +66,16 @@ export default function SignupContent() {
   const handleGoogle = async () => {
     localStorage.setItem("signup_role", role.toLowerCase());
 
+    const isLocalhost = window.location.hostname === "localhost";
+
+    const redirectUrl = isLocalhost
+      ? "http://localhost:3000/login"
+      : "https://internkhojo.com/login";
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `https://intern-khojo-website-ghfx.vercel.app/login`,
+        redirectTo: redirectUrl,
       },
     });
 
