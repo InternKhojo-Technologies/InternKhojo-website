@@ -725,7 +725,7 @@ function PhoneInputGroup({
   }, []);
 
   const filteredData = countryData.filter(
-    (c) =>
+    (c: any) =>
       c.code.includes(searchQuery) ||
       c.label.toLowerCase().includes(searchQuery.toLowerCase()),
   );
