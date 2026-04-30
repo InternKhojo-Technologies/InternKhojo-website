@@ -144,9 +144,8 @@ export default function AboutPage() {
             <Reveal key={idx} delay={idx * 0.1}>
               <div className="p-10 bg-[#fafafa] rounded-[40px] hover:bg-white border border-transparent hover:border-gray-100 hover:shadow-2xl hover:shadow-red-500/5 transition-all duration-500 group h-full flex flex-col justify-between">
                 <div className="text-black group-hover:text-red-600 transition-colors duration-500 mb-16">
-                  {React.cloneElement(item.icon as React.ReactElement, {
-                    size: 36,
-                  })}
+                  const Icon = item.icon;
+                  <Icon size={36} />
                 </div>
                 <div>
                   <h4 className="text-2xl font-black mb-4 uppercase tracking-tighter">
