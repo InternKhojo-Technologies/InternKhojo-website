@@ -25,8 +25,8 @@ function getRelativeTime(date: string) {
 }
 
 export default function FindPage() {
-  const [companies, setCompanies] = useState([]);
-  const [jobs, setJobs] = useState([]);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [titleQuery, setTitleQuery] = useState("");
