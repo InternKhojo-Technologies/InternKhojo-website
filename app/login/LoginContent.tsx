@@ -45,9 +45,9 @@ export default function LoginContent() {
       localStorage.removeItem("signup_role");
 
       if (finalRole === "recruiter") {
-        router.push("/dashboard/recruiter");
+        //router.push("/dashboard/recruiter");
       } else {
-        router.push("/find/jobs");
+        //router.push("/find/jobs");
       }
     };
 
@@ -74,7 +74,7 @@ export default function LoginContent() {
     }
 
     toast.success("Welcome back");
-    router.push(redirect);
+    //router.push(redirect);
   };
 
   const handleGoogleLogin = async () => {
