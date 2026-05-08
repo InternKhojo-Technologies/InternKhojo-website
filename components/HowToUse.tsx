@@ -32,7 +32,7 @@ export default function HowToUse() {
     {
       title: "Grow Career",
       desc: "Transition from student to professional.",
-      img: "/illustrations/User 4.png",
+      img: "/illustrations/U4.png",
     },
   ];
 
