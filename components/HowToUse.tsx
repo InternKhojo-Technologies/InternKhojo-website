@@ -17,22 +17,22 @@ export default function HowToUse() {
     {
       title: "Discover Startups",
       desc: "Browse high-growth companies looking for fresh talent.",
-      img: "/illustrations/1.png",
+      img: "/illustrations/User 1.png",
     },
     {
       title: "Connect & Apply",
       desc: "Skip the queues. Apply directly to founders.",
-      img: "/illustrations/1.png",
+      img: "/illustrations/User 2.png",
     },
     {
       title: "Build Experience",
       desc: "Work on real-world projects that matter.",
-      img: "/illustrations/1.png",
+      img: "/illustrations/User 3.png",
     },
     {
       title: "Grow Career",
       desc: "Transition from student to professional.",
-      img: "/illustrations/1.png",
+      img: "/illustrations/User 4.png",
     },
   ];
 
@@ -40,22 +40,22 @@ export default function HowToUse() {
     {
       title: "Post Opportunities",
       desc: "Get your gig in front of 50k+ students.",
-      img: "/illustrations/1.png",
+      img: "/illustrations/R1.png",
     },
     {
       title: "Find Top Talent",
       desc: "Access a curated pool of hungry creators.",
-      img: "/illustrations/1.png",
+      img: "/illustrations/R2.png",
     },
     {
       title: "Hire Faster",
       desc: "Streamlined dashboard to manage applications.",
-      img: "/illustrations/1.png",
+      img: "/illustrations/R3.png",
     },
     {
       title: "Scale Your Team",
       desc: "Build a pipeline of talent for future growth.",
-      img: "/illustrations/1.png",
+      img: "/illustrations/R4.png",
     },
   ];
 
@@ -232,6 +232,8 @@ export default function HowToUse() {
                     src={step.img}
                     alt={step.title}
                     fill
+                    sizes="(max-width: 768px) 100vw, 25vw"
+                    priority={i === 1}
                     className="object-cover transition-transform duration-700"
                   />
 
