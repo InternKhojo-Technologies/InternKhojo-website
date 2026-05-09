@@ -8,7 +8,8 @@ import { Twitter, Instagram, Linkedin, Github } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="w-full pt-1 pb-4 px-1 lg:px-2 antialiased">
+    /* 🔥 Added pb-20 on mobile to clear the navbar, md:pb-4 for desktop */
+    <footer className="w-full pt-1 pb-20 md:pb-4 px-1 lg:px-2 antialiased">
       <div
         className="
           bg-[#080808] 
@@ -16,6 +17,8 @@ export default function Footer() {
           rounded-[32px] 
           px-6 lg:px-12 
           py-12
+          /* 🔥 Added pb-16 only on mobile to give extra internal room */
+          pb-16 md:pb-12
           relative
           overflow-hidden
           border border-white/[0.05]
@@ -40,7 +43,6 @@ export default function Footer() {
                     className="brightness-110"
                   />
                 </div>
-                {/* Hover stuff removed. Spacing is now normal by default */}
                 <h2 className="text-[36px] font-extrabold tracking-normal leading-none text-white">
                   InternKhojo<span className="text-red-600">.</span>
                 </h2>

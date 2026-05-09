@@ -31,7 +31,6 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Navigation Links (Profile removed from here)
   const navLinks = [
     { name: "Home", href: "/", icon: Home },
     { name: "Find", href: "/find", icon: Search },
@@ -40,15 +39,53 @@ export default function Navbar() {
     { name: "About", href: "/about", icon: Info },
   ];
 
+  // 🔥 PROFILE STRENGTH LOGIC
+  const getChecklist = (p: any) => {
+    if (!p) return [];
+    const items = [];
+    if (!p.name) items.push("Add your name");
+    if (p.role === "candidate") {
+      if (!p.bio) items.push("Add bio");
+      if (!p.skills?.length) items.push("Add skills");
+      if (!p.resume_url) items.push("Upload resume");
+      if (!p.links) items.push("Add links");
+    }
+    if (p.role === "recruiter" && !p.company_id) items.push("Create company");
+    return items;
+  };
+
+  const checklist = getChecklist(profile);
+  const total = profile?.role === "candidate" ? 5 : 2;
+  const progress =
+    total > 0 ? Math.round(((total - checklist.length) / total) * 100) : 0;
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // 🔥 SESSION CACHE & AUTH
   useEffect(() => {
-    getUser();
-    const { data: listener } = supabase.auth.onAuthStateChange(() => getUser());
+    const cachedUser = localStorage.getItem("ik_user");
+    const cachedProfile = localStorage.getItem("ik_profile");
+
+    if (cachedUser) setUser(JSON.parse(cachedUser));
+    if (cachedProfile) {
+      const p = JSON.parse(cachedProfile);
+      setProfile(p);
+      if (p.avatar_url) setAvatar(p.avatar_url);
+    }
+
+    getUser(); // background refresh
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        clearLocalState();
+      } else {
+        getUser();
+      }
+    });
 
     const handleProfileUpdate = () => getUser();
     window.addEventListener("profileUpdated", handleProfileUpdate);
@@ -67,7 +104,6 @@ export default function Navbar() {
     };
   }, []);
 
-  // Notification Listener
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -80,12 +116,9 @@ export default function Navbar() {
           table: "notifications_website",
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
-          setNotifications((prev) => [payload.new, ...prev]);
-        },
+        (payload) => setNotifications((prev) => [payload.new, ...prev]),
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
@@ -93,38 +126,53 @@ export default function Navbar() {
 
   const getUser = async () => {
     const {
-      data: { user },
+      data: { user: authUser },
     } = await supabase.auth.getUser();
-    setUser(user);
-    if (user) {
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      setProfile(profileData);
-
-      if (profileData?.avatar_url) {
-        setAvatar(profileData.avatar_url);
-      } else if (user?.email) {
-        setAvatar(createAvatar(thumbs, { seed: user.email }).toDataUri());
-      }
-
-      const { data: notifData } = await supabase
-        .from("notifications_website")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      setNotifications(notifData || []);
+    if (!authUser) {
+      clearLocalState();
+      return;
     }
+
+    setUser(authUser);
+    localStorage.setItem("ik_user", JSON.stringify(authUser));
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", authUser.id)
+      .single();
+    if (profileData) {
+      setProfile(profileData);
+      localStorage.setItem("ik_profile", JSON.stringify(profileData));
+      setAvatar(
+        profileData.avatar_url ||
+          createAvatar(thumbs, { seed: authUser.email }).toDataUri(),
+      );
+    }
+
+    const { data: notifData } = await supabase
+      .from("notifications_website")
+      .select("*")
+      .eq("user_id", authUser.id)
+      .order("created_at", { ascending: false });
+    setNotifications(notifData || []);
+  };
+
+  const clearLocalState = () => {
+    localStorage.removeItem("ik_user");
+    localStorage.removeItem("ik_profile");
+    setUser(null);
+    setProfile(null);
+    setAvatar(null);
+    setNotifications([]);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setAvatar(null);
+    clearLocalState();
+    setProfileOpen(false);
     router.push("/");
+    router.refresh();
   };
 
   function timeAgo(dateString: string) {
@@ -168,7 +216,7 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`hover:text-blue-600 transition ${pathname === link.href ? "text-blue-600" : "text-gray-700"}`}
+                  className={`transition-all ${pathname === link.href ? "text-black font-black scale-105" : "text-gray-500 hover:text-black"}`}
                 >
                   {link.name}
                 </Link>
@@ -238,7 +286,7 @@ export default function Navbar() {
                         className="absolute right-0 mt-4 w-[320px] md:w-[360px] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="px-6 py-4 flex justify-between items-center bg-white shadow-sm">
+                        <div className="px-6 py-4 flex justify-between items-center bg-white shadow-sm border-b border-gray-100">
                           <h2 className="text-lg font-semibold">
                             Notifications
                           </h2>
@@ -257,15 +305,15 @@ export default function Navbar() {
                             </button>
                           )}
                         </div>
-                        <div className="p-6 text-center">
+                        <div className="p-4 text-center">
                           {notifications.length === 0 ? (
-                            <p className="text-gray-400">
+                            <p className="text-gray-400 py-4">
                               No notifications yet.
                             </p>
                           ) : (
-                            <div className="space-y-4 text-left max-h-[400px] overflow-y-auto">
+                            <div className="space-y-3 text-left max-h-[400px] overflow-y-auto">
                               {today.length > 0 && (
-                                <p className="text-xs text-gray-400 px-2">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-400 px-2 font-bold">
                                   Today
                                 </p>
                               )}
@@ -276,21 +324,21 @@ export default function Navbar() {
                                     if (n.link) router.push(n.link);
                                     setNotifOpen(false);
                                   }}
-                                  className={`p-3 rounded-xl cursor-pointer ${n.read ? "bg-white hover:bg-gray-50" : "bg-blue-50"}`}
+                                  className={`p-3 rounded-xl cursor-pointer ${n.read ? "bg-white hover:bg-gray-50 border border-transparent" : "bg-blue-50 border border-blue-100"}`}
                                 >
-                                  <p className="font-medium text-sm">
+                                  <p className="font-bold text-sm text-gray-900">
                                     {n.title}
                                   </p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-gray-500 leading-relaxed">
                                     {n.message}
                                   </p>
-                                  <p className="text-[10px] text-gray-400 mt-1">
+                                  <p className="text-[10px] text-gray-400 mt-1.5">
                                     {timeAgo(n.created_at)}
                                   </p>
                                 </div>
                               ))}
                               {earlier.length > 0 && (
-                                <p className="text-xs text-gray-400 px-2 mt-4">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-400 px-2 mt-4 font-bold">
                                   Earlier
                                 </p>
                               )}
@@ -301,15 +349,15 @@ export default function Navbar() {
                                     if (n.link) router.push(n.link);
                                     setNotifOpen(false);
                                   }}
-                                  className={`p-3 rounded-xl cursor-pointer ${n.read ? "bg-white hover:bg-gray-50" : "bg-blue-50"}`}
+                                  className={`p-3 rounded-xl cursor-pointer ${n.read ? "bg-white hover:bg-gray-50 border border-transparent" : "bg-blue-50 border border-blue-100"}`}
                                 >
-                                  <p className="font-medium text-sm">
+                                  <p className="font-bold text-sm text-gray-900">
                                     {n.title}
                                   </p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-gray-500 leading-relaxed">
                                     {n.message}
                                   </p>
-                                  <p className="text-[10px] text-gray-400 mt-1">
+                                  <p className="text-[10px] text-gray-400 mt-1.5">
                                     {timeAgo(n.created_at)}
                                   </p>
                                 </div>
@@ -321,7 +369,7 @@ export default function Navbar() {
                     )}
                   </div>
 
-                  {/* Profile Photo (Top Only) */}
+                  {/* Profile Photo & Dropdown */}
                   <div className="relative">
                     {avatar ? (
                       <img
@@ -337,19 +385,42 @@ export default function Navbar() {
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse" />
                     )}
+
                     {profileOpen && (
                       <div
-                        className="absolute right-0 mt-4 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-200"
+                        className="absolute right-0 mt-4 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 py-3 z-50 animate-in fade-in zoom-in-95 duration-200"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="px-4 py-3 border-b border-gray-50">
+                        <div className="px-5 py-2 border-b border-gray-50">
                           <p className="font-bold text-sm">
                             {profile?.name || "Anonymous User"}
                           </p>
                           <p className="text-xs text-gray-500 truncate">
                             {user?.email}
                           </p>
+
+                          {/* 🔥 PROFILE STRENGTH Restored */}
+                          {progress < 100 && (
+                            <div className="mt-4 pb-2">
+                              <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                <span>Strength</span>
+                                <span className="text-blue-600">
+                                  {progress}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-blue-500 h-full transition-all duration-700"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-blue-500 mt-1.5 font-medium italic">
+                                Next: {checklist[0]}
+                              </p>
+                            </div>
+                          )}
                         </div>
+
                         <div className="p-2 space-y-1">
                           <Link
                             href={
@@ -358,20 +429,20 @@ export default function Navbar() {
                                 : "/dashboard/candidate"
                             }
                             onClick={() => setProfileOpen(false)}
-                            className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors"
+                            className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors font-medium"
                           >
                             <LayoutDashboard size={16} /> Dashboard
                           </Link>
                           <Link
                             href="/profile"
                             onClick={() => setProfileOpen(false)}
-                            className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors"
+                            className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors font-medium"
                           >
                             <UserCircle size={16} /> Edit Profile
                           </Link>
                           <button
                             onClick={handleLogout}
-                            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium"
                           >
                             <LogOut size={16} /> Logout
                           </button>
@@ -386,7 +457,7 @@ export default function Navbar() {
         </Container>
       </nav>
 
-      {/* --- MOBILE BOTTOM BAR (Profile Removed) --- */}
+      {/* MOBILE BOTTOM BAR */}
       <div className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 px-2 pb-safe z-50">
         <div className="flex justify-around items-center h-16">
           {navLinks.map((link) => {
@@ -396,17 +467,19 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`flex flex-col items-center justify-center w-full gap-1 transition-all select-none touch-manipulation ${isActive ? "text-blue-600" : "text-gray-400"}`}
+                className={`flex flex-col items-center justify-center w-full gap-1 transition-all select-none touch-manipulation ${isActive ? "text-black" : "text-gray-400"}`}
               >
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] font-bold">{link.name}</span>
+                <Icon size={20} strokeWidth={isActive ? 3 : 2} />
+                <span
+                  className={`text-[10px] ${isActive ? "font-black" : "font-medium"}`}
+                >
+                  {link.name}
+                </span>
               </Link>
             );
           })}
         </div>
       </div>
-
-      {/* Spacer */}
       <div className="h-16 md:hidden" />
     </>
   );
