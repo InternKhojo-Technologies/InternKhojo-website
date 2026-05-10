@@ -13,7 +13,7 @@ export const metadata = {
   icons: {
     icon: [
       {
-        url: "/NEW LOGO BG REMOVED.png",
+        url: "/IK New White logo.png",
         media: "(prefers-color-scheme: light)",
       },
       {
