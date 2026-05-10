@@ -14,11 +14,11 @@ export const metadata = {
     icon: [
       {
         url: "/IK New White logo.png",
-        media: "(prefers-color-scheme: light)",
+        media: "(prefers-color-scheme: dark)",
       },
       {
         url: "/IK New Black logo.png",
-        media: "(prefers-color-scheme: dark)",
+        media: "(prefers-color-scheme: light)",
       },
     ],
   },
