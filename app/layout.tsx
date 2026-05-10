@@ -11,7 +11,16 @@ export const metadata = {
   title: "InternKhojo",
   description: "Find internships, jobs & freelancers",
   icons: {
-    icon: "/logo-2.png",
+    icon: [
+      {
+        url: "/NEW LOGO BG REMOVED.png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/logo-2.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
   },
 };
 
