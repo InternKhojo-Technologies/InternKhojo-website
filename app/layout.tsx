@@ -17,7 +17,7 @@ export const metadata = {
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/logo-2.png",
+        url: "/IK New Black logo.png",
         media: "(prefers-color-scheme: dark)",
       },
     ],
