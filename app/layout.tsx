@@ -13,12 +13,12 @@ export const metadata = {
   icons: {
     icon: [
       {
-        url: "/IK New White logo.png",
-        media: "(prefers-color-scheme: dark)",
+        url: "/Main_logo_White.png",
+        media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/IK New Black logo.png",
-        media: "(prefers-color-scheme: light)",
+        url: "/Main_logo_Black.png",
+        media: "(prefers-color-scheme: dark)",
       },
     ],
   },
