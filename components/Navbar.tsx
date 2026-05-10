@@ -201,7 +201,7 @@ export default function Navbar() {
           <div className="h-16 md:h-20 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 md:gap-3">
               <img
-                src="/NEW LOGO BG REMOVED.png"
+                src="/logo-4.png"
                 className="w-8 h-8 md:w-12 md:h-12"
                 alt="IK logo"
               />
