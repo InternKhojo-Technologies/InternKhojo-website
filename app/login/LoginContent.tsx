@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronRight, Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2, KeyRound, Sparkles } from "lucide-react";
 import { Toaster, toast } from "sonner";
+import Link from "next/link";
 
 export default function LoginContent() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function LoginContent() {
         toast.error("Error fetching profile");
         return;
       }
-      // 🔥 If profile doesn't exist → create it USING signup_role
+
       if (!profile) {
         const savedRole =
           localStorage.getItem("signup_role") ||
@@ -117,48 +118,173 @@ export default function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6">
+    <div className="min-h-screen w-full flex bg-white antialiased select-none overflow-x-hidden">
       <Toaster position="top-center" richColors />
 
-      <div className="w-full max-w-[400px]">
-        <h1 className="text-4xl font-bold text-center mb-6">Welcome Back</h1>
+      {/* ================= LEFT SIDE: PREMIUM BRAND PANEL (Hidden on Mobile) ================= */}
+      <div className="hidden lg:flex lg:w-[50%] bg-[#fafafa] border-r border-gray-100 p-16 flex-col justify-between relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
 
-        <div className="space-y-3">
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 text-gray-400" size={16} />
-            <input
-              placeholder="Email"
-              className="w-full pl-10 pr-4 py-3 border rounded-xl"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+        {/* Header Branding Details */}
+        <div className="flex items-center gap-2.5 relative z-10">
+          <img
+            src="/logo-4.png"
+            className="w-8 h-8 object-contain"
+            alt="Logo"
+          />
+          <span className="font-black text-xl tracking-tighter text-black">
+            InternKhojo.
+          </span>
+        </div>
 
-          <div className="relative">
-            <Lock className="absolute left-3 top-3 text-gray-400" size={16} />
-            <input
-              type="password"
-              placeholder="Password"
-              className="w-full pl-10 pr-4 py-3 border rounded-xl"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+        {/* Clean Static Context for Login flow (Zero Animation Switching Overhead) */}
+        <div className="relative z-10 my-auto max-w-lg w-full">
+          <div className="space-y-8">
+            <h2 className="text-5xl font-[950] tracking-tight leading-[1.05] text-black uppercase">
+              Welcome Back to <br />
+              the{" "}
+              <span className="text-black italic underline decoration-red-600 decoration-4">
+                Ecosystem.
+              </span>
+            </h2>
+            <p className="text-gray-500 font-medium text-lg leading-relaxed">
+              Log in to manage your active early-career applications, handle
+              incoming talent assessment responses, or orchestrate
+              high-authority boardroom interactions.
+            </p>
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center gap-4 text-sm font-bold text-gray-800">
+                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-black flex-shrink-0">
+                  <KeyRound size={16} />
+                </div>
+                Robust Authentication Shield Protocol
+              </div>
+              <div className="flex items-center gap-4 text-sm font-bold text-gray-800">
+                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-black flex-shrink-0">
+                  <Sparkles size={16} />
+                </div>
+                Cached Fast Session Dashboard Redirection
+              </div>
+            </div>
           </div>
         </div>
 
-        <button
-          onClick={handleLogin}
-          className="w-full mt-5 bg-black text-white py-3 rounded-xl flex justify-center items-center gap-2"
-        >
-          {loading ? <Loader2 className="animate-spin" size={16} /> : "Sign In"}
-        </button>
+        <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest relative z-10">
+          Standardizing early-career pathways // 2026
+        </div>
+      </div>
 
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full mt-4 border py-3 rounded-xl"
-        >
-          Continue with Google
-        </button>
+      {/* ================= RIGHT SIDE: AUTH FORM COMPONENT (Fully Adaptive Form) ================= */}
+      <div className="w-full lg:w-[50%] flex flex-col justify-center items-center px-6 sm:px-12 py-12 md:py-16 relative">
+        {/* Mobile Header Visibility Layout Block */}
+        <div className="flex lg:hidden items-center justify-center gap-2 mb-8 w-full">
+          <img
+            src="/logo-4.png"
+            className="w-7 h-7 object-contain"
+            alt="Logo"
+          />
+          <span className="font-black text-xl tracking-tighter text-black">
+            InternKhojo.
+          </span>
+        </div>
+
+        <div className="w-full max-w-[380px] flex flex-col">
+          <h1 className="text-3xl font-[950] mb-1 tracking-tight uppercase text-gray-900 text-center lg:text-left">
+            Welcome Back
+          </h1>
+          <p className="text-sm text-gray-400 mb-8 font-medium text-center lg:text-left">
+            Enter your credentials to enter the ecosystem
+          </p>
+
+          {/* Login Fields */}
+          <div className="space-y-3.5">
+            <div className="relative group">
+              <Mail
+                className="absolute left-4 top-4 text-gray-400 group-focus-within:text-black transition-colors"
+                size={16}
+              />
+              <input
+                type="email"
+                placeholder="Email address"
+                className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="relative group">
+              <Lock
+                className="absolute left-4 top-4 text-gray-400 group-focus-within:text-black transition-colors"
+                size={16}
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Login Form Submit Action Pipeline */}
+          <div className="space-y-3.5 mt-8">
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className="w-full bg-black hover:bg-gray-900 text-white py-3.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all duration-300 active:scale-[0.98] flex justify-center items-center gap-2 shadow-md shadow-black/5"
+            >
+              {loading ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                "Sign In"
+              )}
+            </button>
+
+            <div className="flex items-center my-2 text-[10px] font-black uppercase tracking-widest text-gray-300">
+              <div className="flex-1 h-[1px] bg-gray-100" />
+              <span className="px-3">or</span>
+              <div className="flex-1 h-[1px] bg-gray-100" />
+            </div>
+
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full border border-gray-200 py-3.5 rounded-xl text-sm font-bold text-gray-700 bg-white flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.98] hover:bg-gray-50 hover:border-gray-300"
+            >
+              {/* High-Accuracy Official Google Brand Color Logo */}
+              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.53-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.65-5.17 3.65-8.58Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c2.97 0 5.46-.98 7.28-2.66l-3.88-3.05c-1.08.72-2.45 1.16-3.4 1.16-2.61 0-4.82-1.76-5.61-4.12H2.36v3.16C4.18 22.01 7.82 24 12 24Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M6.39 15.33a7.16 7.16 0 0 1 0-4.66V7.51H2.36a11.93 11.93 0 0 0 0 9.98l4.03-3.16Z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.62 0 3.06.56 4.21 1.66L19.1 3.5C17.26 1.79 14.77.75 12 .75 7.82.75 4.18 2.74 2.36 6.35l4.03 3.16c.79-2.36 3-4.12 5.61-4.12Z"
+                />
+              </svg>
+              Continue with Google
+            </button>
+          </div>
+
+          {/* Navigation redirect to registration page */}
+          <p className="mt-8 text-center text-sm text-gray-400 font-medium">
+            Don't have an account?{" "}
+            <Link
+              className="text-black font-black hover:underline cursor-pointer ml-1"
+              href="/signup"
+            >
+              Sign Up
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

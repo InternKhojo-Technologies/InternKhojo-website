@@ -225,7 +225,11 @@ export default function Navbar() {
 
             <div className="flex items-center gap-3">
               {!user ? (
-                <div className="flex items-center gap-2">
+                /* 🔥 SIGN UP DROPDOWN CONTROLLER WRAPPER FIXED */
+                <div
+                  className="flex items-center gap-2 relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Link
                     href="/login"
                     className="px-3 py-2 text-sm text-gray-600"
@@ -233,14 +237,31 @@ export default function Navbar() {
                     Login
                   </Link>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpen(!open);
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold"
+                    onClick={() => setOpen(!open)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors"
                   >
                     Sign up
                   </button>
+
+                  {/* Dropdown Options List */}
+                  {open && (
+                    <div className="absolute right-0 top-full mt-2 w-44 backdrop-blur-md bg-white/90 rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <Link
+                        href="/signup?role=candidate"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100/80 font-medium transition-colors"
+                        onClick={() => setOpen(false)}
+                      >
+                        Find Jobs
+                      </Link>
+                      <Link
+                        href="/signup?role=recruiter"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100/80 font-medium transition-colors"
+                        onClick={() => setOpen(false)}
+                      >
+                        Hire Talent
+                      </Link>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 md:gap-4">
@@ -399,7 +420,7 @@ export default function Navbar() {
                             {user?.email}
                           </p>
 
-                          {/* 🔥 PROFILE STRENGTH Restored */}
+                          {/* Profile Strength Indicator */}
                           {progress < 100 && (
                             <div className="mt-4 pb-2">
                               <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase mb-1">

@@ -1,37 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import {
+  MapPin,
+  ArrowLeft,
+  Zap,
+  FileText,
+  Briefcase,
+  Banknote,
+  Clock,
+  Loader2,
+  X,
+  Download,
+  Building,
+  ArrowUpRight,
+  ChevronDown,
+  Eye,
+} from "lucide-react";
 
-// 🔥 time ago helper
 function timeAgo(dateString: string) {
   const now = new Date();
   const past = new Date(dateString);
   const diff = Math.floor((now.getTime() - past.getTime()) / 1000);
 
   const days = Math.floor(diff / 86400);
-  if (days > 0) return `${days} day${days > 1 ? "s" : ""} ago`;
+  if (days > 0) return `${days}d ago`;
 
   const hours = Math.floor(diff / 3600);
-  if (hours > 0) return `${hours} hr${hours > 1 ? "s" : ""} ago`;
+  if (hours > 0) return `${hours}h ago`;
 
   const minutes = Math.floor(diff / 60);
-  if (minutes > 0) return `${minutes} min ago`;
+  if (minutes > 0) return `${minutes}m ago`;
 
   return "Just now";
 }
 
 export default function JobDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const jobId = params.id;
 
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedDocUrl, setResolvedDocUrl] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     loadJob();
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewOpen(false);
+    };
+    if (previewOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewOpen]);
 
   const loadJob = async () => {
     const { data, error } = await supabase
@@ -47,90 +75,369 @@ export default function JobDetailPage() {
     }
 
     setJob(data);
+
+    if (data?.attachment_url) {
+      const rawUrl = data.attachment_url.trim();
+
+      if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+        setResolvedDocUrl(rawUrl);
+      } else {
+        const { data: publicUrlData } = supabase.storage
+          .from("job-attachments")
+          .getPublicUrl(rawUrl);
+
+        if (publicUrlData?.publicUrl) {
+          setResolvedDocUrl(publicUrlData.publicUrl);
+        }
+      }
+    }
+
     setLoading(false);
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
-  if (!job) return <div className="p-6">Job not found</div>;
+  if (loading)
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-white">
+        <Loader2 className="w-6 h-6 animate-spin text-black" />
+      </div>
+    );
+  if (!job)
+    return (
+      <div className="p-10 text-center font-bold text-slate-400">
+        Job vacancy reference not found.
+      </div>
+    );
 
   return (
-    <div className="bg-[#F5F6F8] min-h-screen p-8">
-      <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-8">
-        {/* LEFT */}
-        <div className="md:col-span-2 bg-white p-8 rounded-2xl border shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border">
-              {job.companies?.logo_url ? (
-                <img
-                  src={job.companies.logo_url}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span>{job.companies?.name?.[0]}</span>
-              )}
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                {job.companies?.name} • {timeAgo(job.created_at)}
-              </p>
-
-              <h1 className="text-2xl font-semibold">{job.title}</h1>
-            </div>
-          </div>
-
-          {/* SKILLS */}
-          <div className="flex gap-2 mt-5 flex-wrap">
-            {job.skills?.map((skill: string, i: number) => (
-              <span
-                key={i}
-                className="text-xs bg-gray-100 px-3 py-1 rounded-lg"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
-
-          {/* DESCRIPTION */}
-          <div className="mt-8">
-            <h2 className="font-semibold mb-2">Job Description</h2>
-            <p className="text-sm text-gray-600 whitespace-pre-line">
-              {job.description || "No description provided"}
-            </p>
+    <div className="bg-[#fcfcfc] min-h-screen text-black pb-28 select-none antialiased">
+      <div className="max-w-[1140px] mx-auto px-6">
+        {/* Editorial Navigation */}
+        <div className="pt-14 mb-16 flex items-center justify-between border-b border-slate-100 pb-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white hover:border-black transition-all active:scale-95"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Return
+          </button>
+          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-1 h-1 rounded-full bg-red-600 animate-pulse" />
+            Active Opportunity // {jobId.toString().slice(0, 8)}
           </div>
         </div>
 
-        {/* RIGHT */}
-        <div className="bg-white p-6 rounded-2xl border shadow-sm h-fit sticky top-6">
-          <ApplyButton job={job} />
+        {/* Studio Grid Split */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          {/* LEFT SECTION: MAIN JOB PROFILE */}
+          <div className="lg:col-span-8 space-y-14">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="flex items-center gap-4.5">
+                  <div className="w-14 h-14 bg-white rounded-2xl border border-slate-200 flex items-center justify-center p-3 flex-shrink-0 shadow-sm">
+                    {job.companies?.logo_url ? (
+                      <img
+                        src={job.companies.logo_url}
+                        className="w-full h-full object-contain"
+                        alt="Logo"
+                      />
+                    ) : (
+                      <Building className="w-5 h-5 text-slate-400" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
+                      <span className="text-black font-bold">
+                        {job.companies?.name}
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" />{" "}
+                        {timeAgo(job.created_at)}
+                      </span>
+                    </div>
+                    <h1 className="text-3xl sm:text-4xl font-[1000] tracking-tighter uppercase leading-[0.95] text-slate-900">
+                      {job.title}
+                    </h1>
+                  </div>
+                </div>
+              </div>
 
-          <div className="mt-6 space-y-3 text-sm">
-            <div>
-              <p className="text-gray-400">Stipend</p>
-              <p className="font-medium">{job.stipend || "Unpaid"}</p>
+              <div className="flex flex-wrap gap-1.5 pt-2">
+                {job.skills?.map((skill: string, i: number) => (
+                  <span
+                    key={i}
+                    className="text-[10px] font-black uppercase bg-white px-3 py-1.5 rounded-lg border border-slate-200/60 text-slate-600 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
             </div>
 
-            <div>
-              <p className="text-gray-400">Location</p>
-              <p className="font-medium">{job.location || "Remote"}</p>
+            {/* Description Text */}
+            <div className="space-y-4 border-t border-slate-100 pt-10">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 01 /
+                Profile Outline
+              </h2>
+              <p className="text-sm text-slate-600 font-medium whitespace-pre-line leading-relaxed max-w-2xl pl-3.5 border-l-2 border-slate-100">
+                {job.description ||
+                  "No mission brief specified for this opportunity window."}
+              </p>
             </div>
 
-            <div>
-              <p className="text-gray-400">Type</p>
-              <p className="font-medium">{job.job_type}</p>
+            {/* Blueprint Section */}
+            {resolvedDocUrl && (
+              <div className="space-y-4 border-t border-slate-100 pt-10">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 02 /
+                  Documentation Repo
+                </h3>
+
+                <div
+                  onClick={() => setPreviewOpen(true)}
+                  className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-[#fafafa] hover:bg-white rounded-2xl border border-slate-100 hover:border-black transition-all duration-500 w-full text-left shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:scale-[1.01] cursor-pointer gap-4"
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-red-600 shadow-sm flex-shrink-0 group-hover:bg-black group-hover:text-white group-hover:border-black transition-all duration-300">
+                      <FileText size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                        Project Assignment Specifications
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                        Click container block to trigger preview
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-red-600 group-hover:text-black flex items-center gap-1 sm:pl-4 flex-shrink-0 group-hover:translate-x-1 transition-transform self-end sm:self-center">
+                    Launch Hub <ArrowUpRight size={13} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ================= RIGHT SECTION: CARD PANEL ================= */}
+          <div className="lg:col-span-4 lg:sticky lg:top-24">
+            <div className="bg-white border border-slate-200/80 p-6 rounded-[24px] shadow-[0_24px_60px_rgba(0,0,0,0.02)] space-y-6">
+              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 pb-3.5 flex items-center justify-between">
+                <span>Core Framework Details</span>
+                <Zap className="w-3 h-3 text-red-600 fill-red-600" />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
+                    <Banknote size={15} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                      Compensation
+                    </p>
+                    <p className="text-sm font-black text-slate-900 tracking-tight">
+                      {job.stipend || job.salary || "Unpaid exposure"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
+                    <MapPin size={15} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                      Location Scope
+                    </p>
+                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight">
+                      {job.location || "Remote Bounds"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
+                    <Briefcase size={15} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                      Deployment Model
+                    </p>
+                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight">
+                      {job.job_type || "Internship Slot"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <ApplyButton job={job} />
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ================= FLOATING FULLSCREEN PREVIEW SYSTEM ================= */}
+      {previewOpen && resolvedDocUrl && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[999999] p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <div
+            className="bg-white w-full max-w-4xl h-[85vh] rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 bg-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FileText className="w-4 h-4 text-red-600" />
+                <span className="text-xs font-black uppercase tracking-widest text-slate-900">
+                  Blueprint Explorer
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={resolvedDocUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 bg-slate-50 hover:bg-black hover:text-white text-slate-600 rounded-lg transition-all text-[10px] font-black uppercase tracking-wider border border-slate-200 flex items-center gap-1.5"
+                >
+                  <Download size={12} /> Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(false)}
+                  className="p-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg border border-slate-200 cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Render Sandbox Frame */}
+            <div className="flex-1 w-full bg-slate-50 relative">
+              <iframe
+                src={`https://docs.google.com/gview?url=${encodeURIComponent(resolvedDocUrl)}&embedded=true`}
+                className="w-full h-full border-none absolute inset-0 bg-slate-50"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// 🔥 APPLY MODAL SYSTEM
+// ================= MODULAR APPLICATION FORM SYSTEM =================
 function ApplyButton({ job }: { job: any }) {
   const [open, setOpen] = useState(false);
-  const [answers, setAnswers] = useState<any>({});
   const [loading, setLoading] = useState(false);
+  const [answers, setAnswers] = useState<any>({});
+
+  const [bucketResumes, setBucketResumes] = useState<
+    { name: string; url: string }[]
+  >([]);
+  const [selectedResumeUrl, setSelectedResumeUrl] = useState<string>("");
+  const [fetchingFiles, setFetchingFiles] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [inlinePreview, setInlinePreview] = useState<boolean>(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setDropdownOpen(false);
+      }
+    };
+    if (open) window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
+  }, [open]);
+
+  useEffect(() => {
+    const handleModalScroll = () => {
+      setDropdownOpen(false);
+    };
+
+    const currentContainer = scrollContainerRef.current;
+    if (open && currentContainer) {
+      currentContainer.addEventListener("scroll", handleModalScroll, {
+        passive: true,
+      });
+    }
+    return () => {
+      if (currentContainer) {
+        currentContainer.removeEventListener("scroll", handleModalScroll);
+      }
+    };
+  }, [open, dropdownOpen]);
+
+  useEffect(() => {
+    if (open) fetchUserBucketResumes();
+  }, [open]);
+
+  const fetchUserBucketResumes = async () => {
+    setFetchingFiles(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setFetchingFiles(false);
+      return;
+    }
+
+    const { data: files, error } = await supabase.storage
+      .from("resume")
+      .list(user.id, {
+        limit: 20,
+        order: { column: "name", font: "desc" },
+      });
+
+    if (error || !files) {
+      console.error(error);
+      setFetchingFiles(false);
+      return;
+    }
+
+    const parsedFiles = files
+      .filter((f) => f.name.endsWith(".pdf"))
+      .map((f) => {
+        const fullStoragePath = `${user.id}/${f.name}`;
+        const { data: urlData } = supabase.storage
+          .from("resume")
+          .getPublicUrl(fullStoragePath);
+
+        return {
+          name: f.name,
+          url: urlData?.publicUrl || "",
+        };
+      });
+
+    setBucketResumes(parsedFiles);
+    if (parsedFiles.length > 0 && !selectedResumeUrl) {
+      setSelectedResumeUrl(parsedFiles[0].url);
+    }
+    setFetchingFiles(false);
+  };
+
+  const getSelectedFileName = () => {
+    const matched = bucketResumes.find((r) => r.url === selectedResumeUrl);
+    return matched ? matched.name : "Select your resume file...";
+  };
 
   const apply = async () => {
     setLoading(true);
@@ -138,21 +445,8 @@ function ApplyButton({ job }: { job: any }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
     if (!user) {
-      alert("Login required");
-      setLoading(false);
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("resume_url")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.resume_url) {
-      alert("Upload resume first");
+      alert("Authentication loop required. Please log in.");
       setLoading(false);
       return;
     }
@@ -164,17 +458,26 @@ function ApplyButton({ job }: { job: any }) {
       .eq("user_id", user.id);
 
     if (existing && existing.length > 0) {
-      alert("Already applied");
+      alert(
+        "Duplicate target warning: Your intent is already stacked inside this pipeline.",
+      );
       setLoading(false);
       return;
     }
 
-    if (job.questions?.length > 0) {
-      if (Object.keys(answers).length !== job.questions.length) {
-        alert("Please answer all questions");
-        setLoading(false);
-        return;
-      }
+    if (
+      job.questions?.length > 0 &&
+      Object.keys(answers).length !== job.questions.length
+    ) {
+      alert("Response required: Please answer all listed screening questions.");
+      setLoading(false);
+      return;
+    }
+
+    if (!selectedResumeUrl) {
+      alert("No verified resume selected from storage folder.");
+      setLoading(false);
+      return;
     }
 
     const { error } = await supabase.from("applications").insert({
@@ -182,6 +485,7 @@ function ApplyButton({ job }: { job: any }) {
       user_id: user.id,
       stage: "pending",
       answers,
+      resume_url: selectedResumeUrl,
     });
 
     setLoading(false);
@@ -191,63 +495,197 @@ function ApplyButton({ job }: { job: any }) {
       return;
     }
 
-    alert("Applied successfully!");
+    alert("Intent registered successfully inside the candidate stack!");
+    setAnswers({});
+    setSelectedResumeUrl("");
     setOpen(false);
   };
 
   return (
     <>
       <button
-        onClick={() => {
-          console.log("CLICKED APPLY"); // 👈 ADD THIS
-          setOpen(true);
-        }}
-        className="w-full bg-black text-white py-3 rounded-xl"
+        onClick={() => setOpen(true)}
+        className="w-full bg-black hover:bg-gray-900 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-md active:scale-[0.98]"
       >
-        Apply now
+        Apply for loop
       </button>
 
+      {/* THE MAIN OVERLAY SCREEN LAYER */}
       {open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-lg p-6 rounded-xl">
-            <h2 className="text-lg font-semibold mb-4">
-              Apply for {job.title}
-            </h2>
-
-            {job.questions?.length > 0 ? (
-              <div className="space-y-4">
-                {job.questions.map((q: string, i: number) => (
-                  <div key={i}>
-                    <p className="text-sm mb-1">{q}</p>
-                    <textarea
-                      className="w-full border rounded-lg px-3 py-2 text-sm"
-                      onChange={(e) =>
-                        setAnswers({
-                          ...answers,
-                          [i]: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                ))}
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999999] isolate grid place-items-center p-4 sm:p-6 md:p-10"
+          onClick={() => {
+            setOpen(false);
+            setDropdownOpen(false);
+          }}
+        >
+          {/* 🔥 FIXED MODAL BOX HEIGHT WITH INTERNAL SCROLLING WORKING ONLY INSIDE HERE 🔥 */}
+          <div
+            className="bg-white w-full max-w-lg rounded-[24px] border border-slate-200 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-150 relative z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Block Sticky At Top */}
+            <div className="p-6 sm:p-8 pb-3 bg-white flex justify-between items-start flex-shrink-0">
+              <div>
+                <h2 className="text-xl font-[1000] tracking-tight uppercase text-slate-900">
+                  Apply for {job.title}
+                </h2>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider mt-1">
+                  Pipeline processing configuration
+                </p>
               </div>
-            ) : (
-              <p className="text-sm text-gray-500">No additional questions</p>
-            )}
-
-            <div className="flex justify-end gap-2 mt-6">
               <button
+                type="button"
                 onClick={() => setOpen(false)}
-                className="px-4 py-2 bg-gray-100 rounded-lg"
+                className="text-slate-400 hover:text-black p-1 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* This Dedicated Inner Layer Takes Care Of Internal Content Scrolling */}
+            <div
+              ref={scrollContainerRef}
+              className="flex-1 overflow-y-auto px-6 sm:px-8 pb-4 space-y-6"
+              onClick={() => setDropdownOpen(false)}
+            >
+              {/* Resume Selection Section */}
+              <div
+                className="bg-slate-50 p-4 border border-slate-200/60 rounded-xl space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wide">
+                    Select Dashboard Resume
+                  </p>
+                  {selectedResumeUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setInlinePreview(!inlinePreview)}
+                      className="text-[9px] font-black uppercase tracking-wider text-slate-500 hover:text-black flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye size={12} />{" "}
+                      {inlinePreview ? "Hide Preview" : "Live Preview"}
+                    </button>
+                  )}
+                </div>
+
+                {fetchingFiles ? (
+                  <div className="py-2.5 text-center text-xs text-slate-400 font-bold flex items-center justify-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Fetching
+                    files from dashboard directory...
+                  </div>
+                ) : bucketResumes.length === 0 ? (
+                  <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-semibold text-center border border-red-100">
+                    No resumes found in your folder. Please upload resumes
+                    inside your User Profile Dashboard first.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDropdownOpen(!dropdownOpen);
+                        }}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between font-bold text-xs text-slate-700 shadow-sm focus:border-black transition-colors text-left cursor-pointer"
+                      >
+                        <span className="truncate pr-4 flex items-center gap-2">
+                          <FileText size={14} className="text-slate-400" />
+                          {getSelectedFileName()}
+                        </span>
+                        <ChevronDown
+                          size={14}
+                          className={`text-slate-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      {dropdownOpen && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-[160px] overflow-y-auto z-50 py-1">
+                          {bucketResumes.map((resObj, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setSelectedResumeUrl(resObj.url);
+                                setDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 truncate ${
+                                selectedResumeUrl === resObj.url
+                                  ? "bg-slate-50 font-black text-black"
+                                  : "text-slate-600"
+                              }`}
+                            >
+                              <span className="text-[10px] font-mono text-slate-300">
+                                [{idx + 1}]
+                              </span>
+                              {resObj.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {inlinePreview && selectedResumeUrl && (
+                      <div className="w-full h-[280px] rounded-xl border border-slate-200 bg-white overflow-hidden shadow-inner animate-in fade-in duration-200">
+                        <iframe
+                          src={`https://docs.google.com/gview?url=${encodeURIComponent(selectedResumeUrl)}&embedded=true`}
+                          className="w-full h-full border-none"
+                          title="Candidate Storage Resume Selection Live Preview"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Questions Area */}
+              {job.questions?.length > 0 ? (
+                <div className="space-y-4 pr-1">
+                  {job.questions.map((q: string, i: number) => (
+                    <div key={i} className="space-y-1.5">
+                      <p className="text-xs font-black uppercase text-slate-500 tracking-wide">
+                        {q}
+                      </p>
+                      <textarea
+                        rows={3}
+                        value={answers[i] || ""}
+                        placeholder="Type response frameworks guidelines..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-black focus:bg-white focus:ring-1 focus:ring-black transition-all text-slate-700"
+                        onChange={(e) =>
+                          setAnswers({ ...answers, [i]: e.target.value })
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-wide py-2 italic">
+                  No custom verification steps bounded.
+                </p>
+              )}
+            </div>
+
+            {/* Footer Control Actions Panel Fixed To Bottom */}
+            <div className="p-6 sm:p-8 pt-4 border-t border-slate-100 flex justify-end gap-3 bg-white flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
               >
                 Cancel
               </button>
 
               <button
+                type="button"
                 onClick={apply}
-                className="px-4 py-2 bg-black text-white rounded-lg"
+                disabled={
+                  loading || fetchingFiles || bucketResumes.length === 0
+                }
+                className="px-5 py-2.5 bg-black hover:bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                {loading ? "Applying..." : "Submit"}
+                {loading ? "Registering..." : "Submit Intent"}
               </button>
             </div>
           </div>

@@ -37,7 +37,7 @@ export default function FindPage() {
 
   const filterRef = useRef<HTMLDivElement>(null);
 
-  // 🔥 Fix: Click Outside to Close
+  // Click Outside to Close Filters Dropbox
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -57,7 +57,6 @@ export default function FindPage() {
       try {
         await new Promise((r) => setTimeout(r, 200));
 
-        // Latest 3 days logic
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
@@ -67,7 +66,7 @@ export default function FindPage() {
             .from("jobs")
             .select(`*, companies(name, logo_url)`)
             .eq("status", "open")
-            .gte("created_at", threeDaysAgo.toISOString()) // 🔥 Strict 3 days
+            .gte("created_at", threeDaysAgo.toISOString())
             .order("created_at", { ascending: false }),
         ]);
 
@@ -112,12 +111,12 @@ export default function FindPage() {
 
         return matchesTitle && matchesLocation && matchesPay && matchesSkill;
       })
-      .slice(0, 6); // Max 6 jobs on main page
+      .slice(0, 6);
   }, [jobs, titleQuery, locationQuery, payType, selectedSkill]);
 
   return (
     <div className="bg-white min-h-screen text-slate-900 pb-20">
-      {/* 1. HERO - Fixed Spacing */}
+      {/* 1. HERO */}
       <section className="pt-24 pb-16 px-6 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-white mb-8">
           <div className="w-1.5 h-1.5 rounded-full bg-red-600" />
@@ -131,69 +130,85 @@ export default function FindPage() {
           <span className="text-red-600">unicorns</span> are built.
         </h1>
 
-        {/* 2. SEARCH BAR */}
-        <div className="max-w-4xl mx-auto relative" ref={filterRef}>
-          <div className="bg-white border border-slate-200 rounded-full p-2 shadow-2xl shadow-slate-100 flex flex-col md:flex-row items-center">
-            <div className="flex-1 flex items-center px-6 border-b md:border-b-0 md:border-r border-slate-100 py-3 md:py-0 w-full">
-              <Search className="w-4 h-4 text-slate-400 mr-3" />
+        {/* 2. 🔥 FULLY RESPONSIVE SEARCH BAR SYSTEM */}
+        <div className="max-w-4xl mx-auto relative px-2" ref={filterRef}>
+          {/* Changed from forced rounded-full p-2 to responsive rounded edges and block structures */}
+          <div className="bg-white border border-slate-200 rounded-2xl md:rounded-full p-3 md:p-2 shadow-2xl shadow-slate-100/70 flex flex-col md:flex-row items-center gap-2 md:gap-0">
+            {/* Input Block 1: Title */}
+            <div className="flex items-center px-4 md:px-6 border-b md:border-b-0 md:border-r border-slate-100 py-3 md:py-0 w-full flex-1">
+              <Search className="w-4 h-4 text-slate-400 mr-3 flex-shrink-0" />
               <input
                 value={titleQuery}
                 onChange={(e) => setTitleQuery(e.target.value)}
                 placeholder="Job title..."
-                className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-200"
+                className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-400 text-sm"
               />
             </div>
-            <div className="flex-1 flex items-center px-6 py-3 md:py-0 w-full">
-              <MapPin className="w-4 h-4 text-slate-400 mr-3" />
+
+            {/* Input Block 2: Location */}
+            <div className="flex items-center px-4 md:px-6 py-3 md:py-0 w-full flex-1">
+              <MapPin className="w-4 h-4 text-slate-400 mr-3 flex-shrink-0" />
               <input
                 value={locationQuery}
                 onChange={(e) => setLocationQuery(e.target.value)}
                 placeholder="Location"
-                className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-200"
+                className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-400 text-sm"
               />
             </div>
 
-            <div className="flex items-center gap-2 pr-2">
+            {/* Action Buttons Block */}
+            <div className="flex items-center justify-between md:justify-end gap-2 pr-0 md:pr-2 w-full md:w-auto border-t md:border-t-0 border-slate-50 pt-2 md:pt-0">
               <button
+                type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className={`p-4 rounded-full transition-all ${showFilters ? "bg-slate-100 text-red-600" : "text-slate-400 hover:bg-slate-50"}`}
+                className={`p-3.5 rounded-xl md:rounded-full transition-all flex items-center justify-center ${
+                  showFilters
+                    ? "bg-slate-100 text-red-600"
+                    : "text-slate-400 hover:bg-slate-50"
+                }`}
               >
                 <Filter className="w-5 h-5" />
               </button>
-              <button className="bg-slate-900 text-white px-10 py-4 rounded-full font-bold hover:bg-black transition-all">
+
+              <button className="bg-slate-900 text-white px-8 md:px-10 py-3.5 rounded-xl md:rounded-full font-black text-xs uppercase tracking-wider hover:bg-black transition-all flex-1 md:flex-none text-center">
                 Search
               </button>
             </div>
           </div>
 
-          {/* FILTER DROPBOX */}
+          {/* FILTER DROPBOX (Responsive Matrix) */}
           {showFilters && (
-            <div className="absolute top-full mt-4 left-0 right-0 z-50 bg-white border border-slate-100 rounded-3xl p-6 shadow-2xl grid grid-cols-2 gap-8 text-left">
+            <div className="absolute top-full mt-4 left-2 right-2 md:left-0 right-0 z-50 bg-white border border-slate-100 rounded-3xl p-6 shadow-2xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-left animate-in fade-in zoom-in-95 duration-150">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
                   Compensation
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {["all", "paid", "unpaid"].map((t) => (
                     <button
                       key={t}
+                      type="button"
                       onClick={() => setPayType(t)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${payType === t ? "bg-red-600 border-red-600 text-white" : "border-slate-100 text-slate-500 hover:bg-slate-50"}`}
+                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                        payType === t
+                          ? "bg-red-600 border-red-600 text-white"
+                          : "border-slate-100 text-slate-500 hover:bg-slate-50"
+                      }`}
                     >
-                      {t.toUpperCase()}
+                      {t}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
                   Skills
                 </p>
                 <input
                   value={selectedSkill}
                   onChange={(e) => setSelectedSkill(e.target.value)}
                   placeholder="e.g. React, Figma"
-                  className="w-full bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl text-xs outline-none focus:border-red-200 font-bold"
+                  className="w-full bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-xl text-xs outline-none focus:border-red-200 font-bold text-slate-700"
                 />
               </div>
             </div>
@@ -269,7 +284,7 @@ export default function FindPage() {
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-200 group-hover:text-red-600 group-hover:translate-x-1 transition-all" />
+                    <ChevronRight className="w-5 h-5 text-slate-200 group-hover:text-red-600 group-hover:translate-x-1 transition-all flex-shrink-0" />
                   </Link>
                 );
               })
