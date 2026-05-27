@@ -126,7 +126,6 @@ export default function JobDetailPage() {
           </button>
           <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <span className="w-1 h-1 rounded-full bg-red-600 animate-pulse" />
-            {/* 🔥 FIXED: Strictly typecast to prevent undefined build exceptions */}
             Active Opportunity // {String(jobId || "").slice(0, 8)}
           </div>
         </div>
@@ -179,7 +178,7 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            {/* Description Card text */}
+            {/* Description Card */}
             <div className="space-y-4 border-t border-slate-100 pt-10">
               <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 01 /
@@ -191,7 +190,7 @@ export default function JobDetailPage() {
               </p>
             </div>
 
-            {/* Bento-Style Blueprint block trigger */}
+            {/* Bento-Style Blueprint */}
             {resolvedDocUrl && (
               <div className="space-y-4 border-t border-slate-100 pt-10">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
@@ -333,7 +332,7 @@ export default function JobDetailPage() {
   );
 }
 
-// ================= MODULAR APPLY SYSTEM FUNCTION CONTEXT =================
+// ================= MODULAR APPLICATION FORM SYSTEM =================
 function ApplyButton({ job }: { job: any }) {
   const [open, setOpen] = useState(false);
   const [answers, setAnswers] = useState<any>({});
@@ -402,9 +401,13 @@ function ApplyButton({ job }: { job: any }) {
       return;
     }
 
+    // 🔥 FIXED: Standardized valid sorting syntax implementation key for storage list option matching
     const { data: files, error } = await supabase.storage
       .from("resume")
-      .list(user.id, { limit: 20, order: { column: "name", font: "desc" } });
+      .list(user.id, {
+        limit: 20,
+        sortBy: { column: "name", order: "desc" },
+      });
 
     if (error || !files) {
       console.error(error);
@@ -476,7 +479,7 @@ function ApplyButton({ job }: { job: any }) {
       resume_url: selectedResumeUrl,
     });
 
-    setLoading(true);
+    setLoading(false);
     if (error) alert(error.message);
     else {
       alert("Applied successfully!");
@@ -494,7 +497,6 @@ function ApplyButton({ job }: { job: any }) {
         Apply for loop
       </button>
 
-      {/* 🔥 FIX: Clean Overlay Stack anchoring block template elements layout */}
       {open && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[999999] p-4"
@@ -507,7 +509,7 @@ function ApplyButton({ job }: { job: any }) {
             className="bg-white w-full max-w-lg max-h-[85vh] rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header Frame Panel */}
+            {/* Header Frame */}
             <div className="flex-shrink-0 p-6 sm:p-8 pb-4 flex justify-between items-start">
               <div>
                 <h2 className="text-xl font-[1000] tracking-tight uppercase text-slate-900">
@@ -526,7 +528,7 @@ function ApplyButton({ job }: { job: any }) {
               </button>
             </div>
 
-            {/* Central Scrolling content boundaries context */}
+            {/* Central Scrolling */}
             <div
               ref={scrollContainerRef}
               className="flex-1 overflow-y-auto px-6 sm:px-8 pb-4"
@@ -618,7 +620,7 @@ function ApplyButton({ job }: { job: any }) {
                 )}
               </div>
 
-              {/* Questions Loops */}
+              {/* Questions */}
               {job.questions?.length > 0 ? (
                 <div
                   className="space-y-4 pr-1 mb-2"
@@ -632,7 +634,7 @@ function ApplyButton({ job }: { job: any }) {
                       <textarea
                         rows={3}
                         value={answers[i] || ""}
-                        placeholder="Type strategic framework response guidelines..."
+                        placeholder="Type response frameworks guidelines..."
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-black focus:bg-white focus:ring-1 focus:ring-black transition-all text-slate-700"
                         onChange={(e) =>
                           setAnswers({ ...answers, [i]: e.target.value })
