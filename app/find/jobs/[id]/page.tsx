@@ -6,12 +6,15 @@ import { useParams, useRouter } from "next/navigation";
 import {
   MapPin,
   ArrowLeft,
+  Bookmark,
+  ChevronRight,
   Zap,
   FileText,
   Briefcase,
   Banknote,
   Clock,
   Loader2,
+  Maximize2,
   X,
   Download,
   Building,
@@ -40,7 +43,7 @@ function timeAgo(dateString: string) {
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const jobId = params.id;
+  const jobId = params?.id;
 
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +65,8 @@ export default function JobDetailPage() {
   }, [previewOpen]);
 
   const loadJob = async () => {
+    if (!jobId) return;
+
     const { data, error } = await supabase
       .from("jobs")
       .select(`*, companies(name, logo_url)`)
@@ -121,13 +126,14 @@ export default function JobDetailPage() {
           </button>
           <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <span className="w-1 h-1 rounded-full bg-red-600 animate-pulse" />
-            Active Opportunity // {jobId.toString().slice(0, 8)}
+            {/* 🔥 FIXED: Strictly typecast to prevent undefined build exceptions */}
+            Active Opportunity // {String(jobId || "").slice(0, 8)}
           </div>
         </div>
 
-        {/* Studio Grid Split */}
+        {/* Studio Grid Split Architecture */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-          {/* LEFT SECTION: MAIN JOB PROFILE */}
+          {/* LEFT COLUMN: CONTEXT METRICS */}
           <div className="lg:col-span-8 space-y-14">
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -173,7 +179,7 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            {/* Description Text */}
+            {/* Description Card text */}
             <div className="space-y-4 border-t border-slate-100 pt-10">
               <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 01 /
@@ -185,7 +191,7 @@ export default function JobDetailPage() {
               </p>
             </div>
 
-            {/* Blueprint Section */}
+            {/* Bento-Style Blueprint block trigger */}
             {resolvedDocUrl && (
               <div className="space-y-4 border-t border-slate-100 pt-10">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
@@ -218,7 +224,7 @@ export default function JobDetailPage() {
             )}
           </div>
 
-          {/* ================= RIGHT SECTION: CARD PANEL ================= */}
+          {/* RIGHT COLUMN: ACTION BLOCK PANEL */}
           <div className="lg:col-span-4 lg:sticky lg:top-24">
             <div className="bg-white border border-slate-200/80 p-6 rounded-[24px] shadow-[0_24px_60px_rgba(0,0,0,0.02)] space-y-6">
               <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 pb-3.5 flex items-center justify-between">
@@ -278,17 +284,16 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      {/* ================= FLOATING FULLSCREEN PREVIEW SYSTEM ================= */}
+      {/* Floating Blueprint Document Iframe Viewer */}
       {previewOpen && resolvedDocUrl && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[999999] p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200"
           onClick={() => setPreviewOpen(false)}
         >
           <div
-            className="bg-white w-full max-w-4xl h-[85vh] rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+            className="bg-white w-full max-w-4xl h-[88vh] rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 bg-white flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FileText className="w-4 h-4 text-red-600" />
@@ -315,8 +320,6 @@ export default function JobDetailPage() {
                 </button>
               </div>
             </div>
-
-            {/* Render Sandbox Frame */}
             <div className="flex-1 w-full bg-slate-50 relative">
               <iframe
                 src={`https://docs.google.com/gview?url=${encodeURIComponent(resolvedDocUrl)}&embedded=true`}
@@ -330,11 +333,11 @@ export default function JobDetailPage() {
   );
 }
 
-// ================= MODULAR APPLICATION FORM SYSTEM =================
+// ================= MODULAR APPLY SYSTEM FUNCTION CONTEXT =================
 function ApplyButton({ job }: { job: any }) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [answers, setAnswers] = useState<any>({});
+  const [loading, setLoading] = useState(false);
 
   const [bucketResumes, setBucketResumes] = useState<
     { name: string; url: string }[]
@@ -380,9 +383,8 @@ function ApplyButton({ job }: { job: any }) {
       });
     }
     return () => {
-      if (currentContainer) {
+      if (currentContainer)
         currentContainer.removeEventListener("scroll", handleModalScroll);
-      }
     };
   }, [open, dropdownOpen]);
 
@@ -402,10 +404,7 @@ function ApplyButton({ job }: { job: any }) {
 
     const { data: files, error } = await supabase.storage
       .from("resume")
-      .list(user.id, {
-        limit: 20,
-        order: { column: "name", font: "desc" },
-      });
+      .list(user.id, { limit: 20, order: { column: "name", font: "desc" } });
 
     if (error || !files) {
       console.error(error);
@@ -417,13 +416,11 @@ function ApplyButton({ job }: { job: any }) {
       .filter((f) => f.name.endsWith(".pdf"))
       .map((f) => {
         const fullStoragePath = `${user.id}/${f.name}`;
-        const { data: urlData } = supabase.storage
-          .from("resume")
-          .getPublicUrl(fullStoragePath);
-
         return {
           name: f.name,
-          url: urlData?.publicUrl || "",
+          url:
+            supabase.storage.from("resume").getPublicUrl(fullStoragePath).data
+              .publicUrl || "",
         };
       });
 
@@ -441,12 +438,11 @@ function ApplyButton({ job }: { job: any }) {
 
   const apply = async () => {
     setLoading(true);
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      alert("Authentication loop required. Please log in.");
+      alert("Login required.");
       setLoading(false);
       return;
     }
@@ -458,9 +454,7 @@ function ApplyButton({ job }: { job: any }) {
       .eq("user_id", user.id);
 
     if (existing && existing.length > 0) {
-      alert(
-        "Duplicate target warning: Your intent is already stacked inside this pipeline.",
-      );
+      alert("Duplicate assignment stack error.");
       setLoading(false);
       return;
     }
@@ -469,13 +463,7 @@ function ApplyButton({ job }: { job: any }) {
       job.questions?.length > 0 &&
       Object.keys(answers).length !== job.questions.length
     ) {
-      alert("Response required: Please answer all listed screening questions.");
-      setLoading(false);
-      return;
-    }
-
-    if (!selectedResumeUrl) {
-      alert("No verified resume selected from storage folder.");
+      alert("Please fill all questions.");
       setLoading(false);
       return;
     }
@@ -488,17 +476,13 @@ function ApplyButton({ job }: { job: any }) {
       resume_url: selectedResumeUrl,
     });
 
-    setLoading(false);
-
-    if (error) {
-      alert(error.message);
-      return;
+    setLoading(true);
+    if (error) alert(error.message);
+    else {
+      alert("Applied successfully!");
+      setOpen(false);
+      setAnswers({});
     }
-
-    alert("Intent registered successfully inside the candidate stack!");
-    setAnswers({});
-    setSelectedResumeUrl("");
-    setOpen(false);
   };
 
   return (
@@ -510,49 +494,49 @@ function ApplyButton({ job }: { job: any }) {
         Apply for loop
       </button>
 
-      {/* THE MAIN OVERLAY SCREEN LAYER */}
+      {/* 🔥 FIX: Clean Overlay Stack anchoring block template elements layout */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999999] isolate grid place-items-center p-4 sm:p-6 md:p-10"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[999999] p-4"
           onClick={() => {
             setOpen(false);
             setDropdownOpen(false);
           }}
         >
-          {/* 🔥 FIXED MODAL BOX HEIGHT WITH INTERNAL SCROLLING WORKING ONLY INSIDE HERE 🔥 */}
           <div
-            className="bg-white w-full max-w-lg rounded-[24px] border border-slate-200 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-150 relative z-50"
+            className="bg-white w-full max-w-lg max-h-[85vh] rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header Block Sticky At Top */}
-            <div className="p-6 sm:p-8 pb-3 bg-white flex justify-between items-start flex-shrink-0">
+            {/* Header Frame Panel */}
+            <div className="flex-shrink-0 p-6 sm:p-8 pb-4 flex justify-between items-start">
               <div>
                 <h2 className="text-xl font-[1000] tracking-tight uppercase text-slate-900">
                   Apply for {job.title}
                 </h2>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider mt-1">
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">
                   Pipeline processing configuration
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="text-slate-400 hover:text-black p-1 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 cursor-pointer"
+                className="text-slate-400 hover:text-black p-2 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer"
               >
                 <X size={14} />
               </button>
             </div>
 
-            {/* This Dedicated Inner Layer Takes Care Of Internal Content Scrolling */}
+            {/* Central Scrolling content boundaries context */}
             <div
               ref={scrollContainerRef}
-              className="flex-1 overflow-y-auto px-6 sm:px-8 pb-4 space-y-6"
-              onClick={() => setDropdownOpen(false)}
+              className="flex-1 overflow-y-auto px-6 sm:px-8 pb-4"
             >
-              {/* Resume Selection Section */}
               <div
-                className="bg-slate-50 p-4 border border-slate-200/60 rounded-xl space-y-4"
-                onClick={(e) => e.stopPropagation()}
+                className="mb-6 bg-slate-50 p-4 border border-slate-200/60 rounded-xl space-y-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDropdownOpen(false);
+                }}
               >
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-wide">
@@ -572,13 +556,12 @@ function ApplyButton({ job }: { job: any }) {
 
                 {fetchingFiles ? (
                   <div className="py-2.5 text-center text-xs text-slate-400 font-bold flex items-center justify-center gap-2">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Fetching
-                    files from dashboard directory...
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Gathering
+                    folder parameters...
                   </div>
                 ) : bucketResumes.length === 0 ? (
                   <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-semibold text-center border border-red-100">
-                    No resumes found in your folder. Please upload resumes
-                    inside your User Profile Dashboard first.
+                    No resumes found inside your profile repo.
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -611,11 +594,7 @@ function ApplyButton({ job }: { job: any }) {
                                 setSelectedResumeUrl(resObj.url);
                                 setDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 truncate ${
-                                selectedResumeUrl === resObj.url
-                                  ? "bg-slate-50 font-black text-black"
-                                  : "text-slate-600"
-                              }`}
+                              className={`w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 truncate ${selectedResumeUrl === resObj.url ? "bg-slate-50 font-black text-black" : "text-slate-600"}`}
                             >
                               <span className="text-[10px] font-mono text-slate-300">
                                 [{idx + 1}]
@@ -628,11 +607,10 @@ function ApplyButton({ job }: { job: any }) {
                     </div>
 
                     {inlinePreview && selectedResumeUrl && (
-                      <div className="w-full h-[280px] rounded-xl border border-slate-200 bg-white overflow-hidden shadow-inner animate-in fade-in duration-200">
+                      <div className="w-full h-[240px] rounded-xl border border-slate-200 bg-white overflow-hidden shadow-inner animate-in fade-in duration-200">
                         <iframe
                           src={`https://docs.google.com/gview?url=${encodeURIComponent(selectedResumeUrl)}&embedded=true`}
                           className="w-full h-full border-none"
-                          title="Candidate Storage Resume Selection Live Preview"
                         />
                       </div>
                     )}
@@ -640,9 +618,12 @@ function ApplyButton({ job }: { job: any }) {
                 )}
               </div>
 
-              {/* Questions Area */}
+              {/* Questions Loops */}
               {job.questions?.length > 0 ? (
-                <div className="space-y-4 pr-1">
+                <div
+                  className="space-y-4 pr-1 mb-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {job.questions.map((q: string, i: number) => (
                     <div key={i} className="space-y-1.5">
                       <p className="text-xs font-black uppercase text-slate-500 tracking-wide">
@@ -651,7 +632,7 @@ function ApplyButton({ job }: { job: any }) {
                       <textarea
                         rows={3}
                         value={answers[i] || ""}
-                        placeholder="Type response frameworks guidelines..."
+                        placeholder="Type strategic framework response guidelines..."
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-black focus:bg-white focus:ring-1 focus:ring-black transition-all text-slate-700"
                         onChange={(e) =>
                           setAnswers({ ...answers, [i]: e.target.value })
@@ -667,8 +648,11 @@ function ApplyButton({ job }: { job: any }) {
               )}
             </div>
 
-            {/* Footer Control Actions Panel Fixed To Bottom */}
-            <div className="p-6 sm:p-8 pt-4 border-t border-slate-100 flex justify-end gap-3 bg-white flex-shrink-0">
+            {/* Static Action Buttons Footer Panel */}
+            <div
+              className="flex-shrink-0 p-6 border-t border-slate-100 flex justify-end gap-3 bg-white"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -676,7 +660,6 @@ function ApplyButton({ job }: { job: any }) {
               >
                 Cancel
               </button>
-
               <button
                 type="button"
                 onClick={apply}
