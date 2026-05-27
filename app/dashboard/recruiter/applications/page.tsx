@@ -10,30 +10,22 @@ import {
   Users,
   Menu,
   RefreshCcw,
-  ChevronRight,
   User,
   ExternalLink,
   X,
   Search,
   ChevronDown,
   Mail,
-  Calendar,
   HelpCircle,
   Inbox,
-  CheckCircle2,
-  Zap,
-  ArrowRight,
   Clock,
   Target,
+  ArrowRight,
 } from "lucide-react";
 
 /**
- * FINAL BOSS RECRUITER TERMINAL
- * Includes:
- * - Automatic job filtering from URL params
- * - Fixed Sidebar Logo UI
- * - High-density "Opportunity" Table
- * - Detailed Dossier Intelligence Drawer
+ * FINAL BOSS RECRUITER TERMINAL (PRODUCTION READY)
+ * Mapped perfectly with 'notifications_website' columns: link and read
  */
 
 export default function RecruiterApplicationsPage() {
@@ -61,7 +53,6 @@ function ApplicationsContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  // URL Parameter Handling
   const searchParams = useSearchParams();
   const initialJobId = searchParams.get("jobId") || "all";
   const [jobFilter, setJobFilter] = useState(initialJobId);
@@ -73,7 +64,6 @@ function ApplicationsContent() {
     checkRoleAndLoad();
   }, []);
 
-  // Update filter if the user clicks a job from another page
   useEffect(() => {
     const jobId = searchParams.get("jobId");
     if (jobId) setJobFilter(jobId);
@@ -95,6 +85,7 @@ function ApplicationsContent() {
         .select("role, company_id")
         .eq("id", user.id)
         .single();
+
       if (!profile || profile.role !== "recruiter") {
         router.push("/dashboard/candidate");
         return;
@@ -126,20 +117,91 @@ function ApplicationsContent() {
     }
   };
 
+  // 🔥 FIXED AND FULLY FAIL-SAFE RE-ENGINEERED NOTIFICATION LOOPS
   const updateStage = async (appId: string, stage: string) => {
     const oldApps = [...applications];
+
+    const currentApp = applications.find((a) => a.id === appId);
+    if (!currentApp) return;
+
     setApplications((prev) =>
       prev.map((a) => (a.id === appId ? { ...a, stage } : a)),
     );
     if (selectedApp?.id === appId) setSelectedApp({ ...selectedApp, stage });
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from("applications")
       .update({ stage })
       .eq("id", appId);
-    if (error) {
+
+    if (updateError) {
       setApplications(oldApps);
-      alert("Cloud sync failed.");
+      alert("Cloud status sync transaction failed.");
+      return;
+    }
+
+    const targetCandidateId = currentApp.user_id;
+    if (!targetCandidateId) {
+      console.error(
+        "Missing candidate user target token reference mapping setup.",
+      );
+      return;
+    }
+
+    try {
+      const jobTitle = currentApp.jobs?.title || "your targeted track";
+      const companyName = company?.name || "The Platform Organization";
+
+      let notifyTitle = "Application Pipeline Update";
+      let notifyMessage = `Your process status bounds have been updated to ${stage.toUpperCase()}.`;
+
+      switch (stage.toLowerCase()) {
+        case "shortlisted":
+          notifyTitle = "🚀 Application Shortlisted";
+          notifyMessage = `Great news! You have been shortlisted by ${companyName} for the "${jobTitle}" track role.`;
+          break;
+        case "interview":
+          notifyTitle = "📅 Interview Round Scheduled";
+          notifyMessage = `${companyName} has pushed your loop to the Interview Track stage for "${jobTitle}". Stay alert.`;
+          break;
+        case "hired":
+          notifyTitle = "🎉 Offer Letter Extended";
+          notifyMessage = `Congratulations! You have cleared all interview milestones for "${jobTitle}" at ${companyName} & Now are successfully Hired for the role.`;
+          break;
+        case "rejected":
+          notifyTitle = "Status Update Tracker";
+          notifyMessage = `Thank you for your application towards the "${jobTitle}" pipeline at ${companyName}.Unfortunately Recruiters have decided to look elsewhere but they really liked your profile & had wish you more Success for your Future Endevour.`;
+          break;
+      }
+
+      // 🔥 EXPLICIT GENERATION OF UUID FOR KEY CONSTRAINTS VALIDATION
+      const generatedNotificationId = crypto.randomUUID();
+
+      const { error: dbInsertError } = await supabase
+        .from("notifications_website")
+        .insert({
+          id: generatedNotificationId, // Explicit dynamic primary key injection binding scope
+          user_id: targetCandidateId,
+          title: notifyTitle,
+          message: notifyMessage,
+          type: "application_stage",
+          link: "/dashboard/candidate",
+          read: false,
+          created_at: new Date().toISOString(),
+        });
+
+      if (dbInsertError) {
+        console.error(
+          "Rejection Exception logs on site engine:",
+          dbInsertError.message,
+        );
+        alert(`DB Insert Error: ${dbInsertError.message}`);
+      }
+    } catch (notifyErr) {
+      console.error(
+        "Employee Notification Desk Fatal Core Loop Error:",
+        notifyErr,
+      );
     }
   };
 
@@ -177,24 +239,17 @@ function ApplicationsContent() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="h-screen flex items-center justify-center font-black uppercase text-[10px] tracking-[0.8em] text-[#FF3B30] animate-pulse">
-        Establishing Connection...
-      </div>
-    );
-
   return (
-    <div className="bg-[#FBFCFD] min-h-screen flex p-6 gap-6 text-[#111] font-sans">
-      {/* SIDEBAR - LOCKED UI WITH FIXED LOGO */}
+    <div className="bg-[#FBFCFD] min-h-screen flex p-6 gap-6 text-[#111] font-sans select-none">
+      {/* SIDEBAR CONTAINER */}
       <motion.div
         animate={{ width: collapsed ? 80 : 260 }}
-        className="rounded-[2rem] p-6 bg-white border border-gray-100 flex flex-col justify-between h-[calc(100vh-48px)] sticky top-6 shadow-sm"
+        className="rounded-[2rem] p-6 bg-white border border-gray-100 flex flex-col justify-between h-[calc(100vh-48px)] sticky top-6 shadow-sm z-30"
       >
         <div>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="mb-10 hover:bg-gray-50 p-2.5 rounded-xl transition-all text-gray-400"
+            className="mb-10 hover:bg-gray-50 p-2.5 rounded-xl transition-all text-gray-400 cursor-pointer"
           >
             <Menu size={22} />
           </button>
@@ -260,8 +315,8 @@ function ApplicationsContent() {
         </div>
       </motion.div>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col">
+      {/* MAIN VIEW CONTENT WORKSPACE */}
+      <div className="flex-1 flex flex-col min-w-0">
         <header className="mb-8 px-1 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center text-white shadow-xl shadow-gray-200">
@@ -278,14 +333,14 @@ function ApplicationsContent() {
           </div>
           <button
             onClick={checkRoleAndLoad}
-            className="p-3.5 bg-white border border-gray-200 rounded-2xl text-gray-400 hover:text-black transition-all hover:rotate-180 duration-500 shadow-sm"
+            className="p-3.5 bg-white border border-gray-200 rounded-2xl text-gray-400 hover:text-black transition-all hover:rotate-180 duration-500 shadow-sm cursor-pointer"
           >
             <RefreshCcw size={18} />
           </button>
         </header>
 
         {/* COMMAND CENTER */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6 w-full">
           <div className="relative flex-1 group">
             <Search
               className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-black transition-colors"
@@ -300,12 +355,12 @@ function ApplicationsContent() {
             />
           </div>
 
-          <div className="bg-white border border-gray-200 p-1.5 rounded-2xl flex items-center shadow-sm">
-            <div className="relative border-r border-gray-100 pr-1">
+          <div className="bg-white border border-gray-200 p-1.5 rounded-2xl flex flex-col sm:flex-row items-center shadow-sm gap-2 sm:gap-0">
+            <div className="relative border-b sm:border-b-0 sm:border-r border-gray-100 pr-1 w-full sm:w-auto">
               <select
                 value={jobFilter}
                 onChange={(e) => setJobFilter(e.target.value)}
-                className="appearance-none bg-transparent pl-4 pr-10 py-2 text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none cursor-pointer"
+                className="appearance-none bg-transparent pl-4 pr-10 py-2 w-full text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none cursor-pointer"
               >
                 <option value="all">Opportunity Filter</option>
                 {uniqueJobs.map((job) => (
@@ -319,12 +374,12 @@ function ApplicationsContent() {
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"
               />
             </div>
-            <div className="flex items-center gap-1 px-1">
+            <div className="flex flex-wrap items-center gap-1 px-1 justify-center">
               {["ALL", "SHORTLISTED", "INTERVIEW", "HIRED"].map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`px-5 py-2.5 rounded-xl text-[9px] font-black tracking-widest transition-all ${statusFilter === s ? "bg-black text-white shadow-lg" : "text-gray-400 hover:bg-gray-50"}`}
+                  className={`px-4 sm:px-5 py-2.5 rounded-xl text-[9px] font-black tracking-widest transition-all cursor-pointer ${statusFilter === s ? "bg-black text-white shadow-lg" : "text-gray-400 hover:bg-gray-50"}`}
                 >
                   {s}
                 </button>
@@ -334,9 +389,9 @@ function ApplicationsContent() {
         </div>
 
         {/* HIGH DENSITY TABLE */}
-        <div className="bg-white border border-gray-200 rounded-[2rem] shadow-sm overflow-hidden flex-1 flex flex-col">
-          <div className="overflow-y-auto scrollbar-hide h-full">
-            <table className="w-full border-separate border-spacing-0">
+        <div className="bg-white border border-gray-200 rounded-[2rem] shadow-sm overflow-hidden flex-1 flex flex-col min-h-[400px]">
+          <div className="overflow-x-auto overflow-y-auto scrollbar-hide h-full">
+            <table className="w-full border-separate border-spacing-0 min-w-[700px]">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gray-50/80 backdrop-blur-md text-[9px] font-black text-gray-400 uppercase tracking-[0.25em]">
                   <th className="pl-10 py-6 text-left border-b border-gray-100">
@@ -367,6 +422,7 @@ function ApplicationsContent() {
                             <img
                               src={app.profiles.avatar_url}
                               className="w-full h-full object-cover"
+                              alt=""
                             />
                           ) : (
                             <User
@@ -399,7 +455,7 @@ function ApplicationsContent() {
                       </span>
                     </td>
                     <td className="pr-10 py-4 text-right">
-                      <button className="p-2.5 bg-gray-50 rounded-xl text-gray-300 group-hover:bg-black group-hover:text-white transition-all transform group-hover:translate-x-1 shadow-sm">
+                      <button className="p-2.5 bg-gray-50 rounded-xl text-gray-300 group-hover:bg-black group-hover:text-white transition-all transform group-hover:translate-x-1 shadow-sm cursor-pointer">
                         <ArrowRight size={16} strokeWidth={3} />
                       </button>
                     </td>
@@ -408,7 +464,7 @@ function ApplicationsContent() {
               </tbody>
             </table>
             {filteredApps.length === 0 && (
-              <div className="py-20 text-center flex flex-col items-center">
+              <div className="py-20 text-center flex flex-col items-center justify-center">
                 <Inbox size={40} className="text-gray-100 mb-4" />
                 <p className="text-gray-400 font-black text-[10px] uppercase tracking-widest px-1">
                   Zero Results in Pipeline
@@ -419,7 +475,7 @@ function ApplicationsContent() {
         </div>
       </div>
 
-      {/* INTELLIGENCE DRAWER */}
+      {/* INTELLIGENCE DOSSIER DRAWER */}
       <AnimatePresence>
         {selectedApp && (
           <>
@@ -435,14 +491,14 @@ function ApplicationsContent() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 250 }}
-              className="fixed top-0 right-0 h-full w-[520px] bg-white shadow-2xl z-[50] flex flex-col border-l border-gray-200"
+              className="fixed top-0 right-0 h-full w-full sm:w-[520px] bg-white shadow-2xl z-[50] flex flex-col border-l border-gray-200"
             >
               <div className="flex flex-col h-full">
                 <div className="p-10 pb-8 bg-gray-50/30 border-b border-gray-100">
                   <div className="flex justify-between items-center mb-10">
                     <button
                       onClick={() => setSelectedApp(null)}
-                      className="p-3.5 hover:bg-white rounded-2xl border border-gray-200 transition-all text-gray-400 hover:text-black"
+                      className="p-3.5 hover:bg-white rounded-2xl border border-gray-200 transition-all text-gray-400 hover:text-black cursor-pointer"
                     >
                       <X size={20} />
                     </button>
@@ -450,6 +506,7 @@ function ApplicationsContent() {
                       <a
                         href={selectedApp.resume_url}
                         target="_blank"
+                        rel="noopener noreferrer"
                         className="bg-black text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 hover:bg-[#FF3B30] transition-all shadow-xl shadow-red-100/10"
                       >
                         View Resume <ExternalLink size={16} />
@@ -462,22 +519,23 @@ function ApplicationsContent() {
                         <img
                           src={selectedApp.profiles.avatar_url}
                           className="w-full h-full object-cover"
+                          alt=""
                         />
                       ) : (
                         <User size={40} className="m-auto mt-6 text-gray-200" />
                       )}
                     </div>
                     <div>
-                      <h2 className="text-3xl font-black tracking-tighter text-gray-900 italic leading-none">
+                      <h2 className="text-3xl font-black tracking-tighter text-gray-900 italic leading-none truncate max-w-[260px]">
                         {selectedApp.profiles?.name}
                       </h2>
-                      <div className="flex items-center gap-2 mt-3">
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
                         <span
                           className={`px-3 py-1 rounded-full text-[8px] font-black uppercase border ${getStatusColor(selectedApp.stage)}`}
                         >
                           {selectedApp.stage || "pending"}
                         </span>
-                        <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">
+                        <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest truncate max-w-[150px]">
                           {selectedApp.jobs?.title}
                         </p>
                       </div>
@@ -486,7 +544,7 @@ function ApplicationsContent() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-10 scrollbar-hide py-10 space-y-10">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                       <div className="flex items-center gap-2 mb-2 text-gray-400">
                         <Mail size={12} />
@@ -549,7 +607,7 @@ function ApplicationsContent() {
                           <button
                             key={stage}
                             onClick={() => updateStage(selectedApp.id, stage)}
-                            className={`group flex items-center justify-between px-6 py-5 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] border transition-all ${selectedApp.stage === stage ? "bg-black text-white border-black shadow-2xl scale-[1.02]" : "bg-white text-gray-400 border-gray-100 hover:border-black hover:text-black"}`}
+                            className={`group flex items-center justify-between px-6 py-5 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] border transition-all cursor-pointer ${selectedApp.stage === stage ? "bg-black text-white border-black shadow-2xl scale-[1.02]" : "bg-white text-gray-400 border-gray-100 hover:border-black hover:text-black"}`}
                           >
                             {stage}
                             <div
