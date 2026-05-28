@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import {
@@ -9,7 +9,6 @@ import {
   Upload,
   FileType,
   Zap,
-  CheckCircle2,
   X,
   ArrowLeft,
   ChevronDown,
@@ -17,11 +16,11 @@ import {
   ShieldCheck,
   Target,
   Database,
-  CreditCard,
   Layers,
   MapPin,
+  CreditCard,
   AlertCircle,
-  Clock,
+  CheckCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -29,7 +28,7 @@ export default function CreateJobPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  // States
+  // Core Form States
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isPaid, setIsPaid] = useState(true);
@@ -40,19 +39,37 @@ export default function CreateJobPage() {
   const [duration, setDuration] = useState("3-6 Months");
   const [experienceLevel, setExperienceLevel] = useState("fresher");
 
-  // Skill Logic
+  // Skill & Question Matrices
   const [skillInput, setSkillInput] = useState("");
   const [skillsList, setSkillsList] = useState<string[]>([]);
-
   const [questions, setQuestions] = useState<string[]>([""]);
   const [attachment, setAttachment] = useState<File | null>(null);
 
+  // Identity Profiles
   const [companyProfile, setCompanyProfile] = useState<any>(null);
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
+  // 🔥 CUSTOM BUILT-IN TOAST STATES (NO EXTERNAL PACKAGES)
+  const [customToast, setCustomToast] = useState<{
+    show: boolean;
+    message: string;
+    type: "success" | "error";
+  }>({ show: false, message: "", type: "success" });
+
+  // 🔥 CORE CONFIRMATION DIALOG GUARD OVERLAY STATE
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     securityCheck();
   }, []);
+
+  // Internal Floating Alert Action Dispatcher
+  const triggerCustomToast = (message: string, type: "success" | "error") => {
+    setCustomToast({ show: true, message, type });
+    setTimeout(() => {
+      setCustomToast((prev) => ({ ...prev, show: false }));
+    }, 4000); // 4 Seconds absolute visual baseline duration
+  };
 
   const securityCheck = async () => {
     try {
@@ -114,19 +131,31 @@ export default function CreateJobPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.size <= 10 * 1024 * 1024) setAttachment(file);
-    else if (file) alert("File Limit 10MB Overflow.");
+    if (file && file.size <= 10 * 1024 * 1024) {
+      setAttachment(file);
+    } else if (file) {
+      triggerCustomToast("File limit 10MB overflow.", "error");
+    }
   };
 
-  const handleCreate = async () => {
+  // 🔥 INTERFACE SUBMIT VALIDATOR TRIGGER
+  const handleCreateIntent = () => {
     if (!title || !description || (isPaid && !stipend)) {
-      alert(
-        "Mandatory parameters missing. Please complete fields marked with *",
+      triggerCustomToast(
+        "Please fill out all necessary structural details.",
+        "error",
       );
       return;
     }
+    // Form is perfectly valid, show confirmation screen guard overlay
+    setShowConfirmModal(true);
+  };
 
+  // 🔥 FINAL VERIFIED COMMITTED ACTION FLOW
+  const executeDeploymentPipeline = async () => {
+    setShowConfirmModal(false); // Close guard dashboard interface modal
     setLoading(true);
+
     try {
       const {
         data: { user },
@@ -147,31 +176,93 @@ export default function CreateJobPage() {
         ? `${currency === "INR" ? "₹" : currency === "USD" ? "$" : "€"}${stipend}`
         : "Unpaid";
 
-      const { error: insertError } = await supabase.from("jobs").insert({
-        title,
-        description,
-        job_mode: "company",
-        created_by: user.id,
-        recruiter_id: user.id,
-        company_id: companyProfile.id,
-        stipend: stipendValue,
-        location,
-        job_type: workType,
-        duration: workType === "internship" ? duration : "Full-Time",
-        experience_level: experienceLevel,
-        skills: skillsList,
-        questions: questions.filter((q) => q.trim() !== ""),
-        attachment_url: docUrl,
-        status: "open",
-      });
+      const { data: newJob, error: insertError } = await supabase
+        .from("jobs")
+        .insert({
+          title,
+          description,
+          job_mode: "company",
+          created_by: user.id,
+          recruiter_id: user.id,
+          company_id: companyProfile.id,
+          stipend: stipendValue,
+          location,
+          job_type: workType,
+          duration: workType === "internship" ? duration : "Full-Time",
+          experience_level: experienceLevel,
+          skills: skillsList,
+          questions: questions.filter((q) => q.trim() !== ""),
+          attachment_url: docUrl,
+          status: "open",
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
 
-      alert("Opportunity Deployed Successfully.");
+      // Filtered Segment Broadcast Engine Trigger Track
+      if (newJob) {
+        try {
+          const { data: candidates } = await supabase
+            .from("profiles")
+            .select("email, skills")
+            .eq("role", "candidate");
+
+          if (candidates && candidates.length > 0) {
+            const jobSkillsSet = new Set(
+              (newJob.skills || []).map((s: string) => s.trim().toUpperCase()),
+            );
+
+            const matchedEmails: string[] = [];
+
+            candidates.forEach((candidate) => {
+              if (!candidate.email) return;
+
+              if (jobSkillsSet.size === 0) {
+                matchedEmails.push(candidate.email);
+                return;
+              }
+
+              const candidateSkills = Array.isArray(candidate.skills)
+                ? candidate.skills
+                : [];
+              const hasMatchingSkill = candidateSkills.some((skill: string) =>
+                jobSkillsSet.has(skill.trim().toUpperCase()),
+              );
+
+              if (hasMatchingSkill) {
+                matchedEmails.push(candidate.email);
+              }
+            });
+
+            if (matchedEmails.length > 0) {
+              await fetch("/api/send-job-broadcast", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  jobTitle: newJob.title,
+                  companyName: companyProfile?.name || "Ecosystem Partner",
+                  skills: newJob.skills,
+                  location: newJob.location,
+                  stipend: newJob.stipend,
+                  candidateEmails: matchedEmails,
+                }),
+              });
+            }
+          }
+        } catch (broadcastErr) {
+          console.error("Broadcast transmission loop error:", broadcastErr);
+        }
+      }
+
+      triggerCustomToast(
+        "Job created successfully! Pipeline broadcast active.",
+        "success",
+      );
       resetForm();
     } catch (err: any) {
       console.error("Post Error:", err);
-      alert(`Deployment Failed: ${err.message}`);
+      triggerCustomToast(`Deployment failed: ${err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -191,13 +282,78 @@ export default function CreateJobPage() {
     );
 
   return (
-    <div className="bg-[#FBFCFD] min-h-screen text-[#111] font-sans selection:bg-black selection:text-white pb-20">
+    <div className="bg-[#FBFCFD] min-h-screen text-[#111] font-sans selection:bg-black selection:text-white pb-20 relative overflow-x-hidden">
+      {/* 🔥 1. CUSTOM SYSTEM BANNER ALERTS TOAST VIEWPORT */}
+      <AnimatePresence>
+        {customToast.show && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-8 right-8 z-[100] flex items-center gap-3 bg-black text-white px-5 py-4 rounded-xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] select-none pointer-events-auto"
+          >
+            {customToast.type === "success" ? (
+              <CheckCircle
+                size={16}
+                className="text-emerald-400 flex-shrink-0"
+              />
+            ) : (
+              <AlertCircle size={16} className="text-rose-400 flex-shrink-0" />
+            )}
+            <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+              {customToast.message}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔥 2. DYNAMIC SYSTEM CONFIRMATION OVERLAY DIALOG */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl border border-gray-100 p-8 max-w-sm w-full shadow-[0_30px_70px_rgba(0,0,0,0.15)] text-center space-y-6"
+            >
+              <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-black border border-gray-100">
+                <Rocket size={20} className="animate-bounce" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-black uppercase tracking-wider text-black">
+                  Confirm Transmission
+                </h3>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-normal leading-relaxed px-2">
+                  Do you really want to commit this assignment track to live
+                  candidate broadcast loops?
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="bg-gray-50 text-gray-400 text-[10px] font-black uppercase tracking-widest py-3.5 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  No, Abort
+                </button>
+                <button
+                  onClick={executeDeploymentPipeline}
+                  className="bg-black text-white text-[10px] font-black uppercase tracking-widest py-3.5 rounded-xl hover:bg-[#FF3B30] transition-colors shadow-md cursor-pointer"
+                >
+                  Yes, Commit
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* --- TOP BAR --- */}
       <nav className="max-w-[1300px] mx-auto px-8 py-8 flex justify-between items-center">
         <div className="flex items-center gap-8">
           <button
             onClick={() => router.push("/dashboard/recruiter/jobs")}
-            className="flex items-center gap-2 text-[11px] font-bold tracking-[0.1em] uppercase hover:opacity-50 transition-opacity"
+            className="flex items-center gap-2 text-[11px] font-bold tracking-[0.1em] uppercase hover:opacity-50 transition-opacity cursor-pointer"
           >
             <ArrowLeft size={18} strokeWidth={2.5} /> Back
           </button>
@@ -231,6 +387,7 @@ export default function CreateJobPage() {
                 <img
                   src={companyProfile.logo_url}
                   className="w-full h-full object-cover"
+                  alt="Logo"
                 />
               ) : (
                 <div className="flex flex-col items-center">
@@ -249,12 +406,12 @@ export default function CreateJobPage() {
         <div className="lg:col-span-8 space-y-8">
           <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-10">
             <header className="border-b border-gray-50 pb-6 text-black">
-              <h1 className="text-4xl font-black tracking-tight uppercase italic leading-none">
+              <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-none">
                 Establish Mission<span className="text-[#FF3B30]">.</span>
               </h1>
             </header>
 
-            {/* POSITION DESIGNATION - REQUIRED */}
+            {/* POSITION DESIGNATION */}
             <div className="space-y-3">
               <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">
                 <Target size={14} className="text-black" /> Designation{" "}
@@ -262,13 +419,13 @@ export default function CreateJobPage() {
               </label>
               <input
                 placeholder="E.G. SR. PRODUCT DESIGNER"
-                className="w-full bg-[#F8F9FA] px-6 py-4 rounded-xl text-lg font-bold placeholder:text-gray-300 outline-none focus:ring-2 focus:ring-black/5 transition-all"
+                className="w-full bg-[#F8F9FA] px-6 py-4 rounded-xl text-lg font-bold placeholder:text-gray-300 outline-none focus:ring-2 focus:ring-black/5 transition-all uppercase"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
 
-            {/* MISSION BRIEF - REQUIRED */}
+            {/* MISSION BRIEF */}
             <div className="space-y-3">
               <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">
                 <Database size={14} className="text-black" /> Mission Brief{" "}
@@ -296,8 +453,9 @@ export default function CreateJobPage() {
                   onKeyDown={(e) => e.key === "Enter" && addSkill()}
                 />
                 <button
+                  type="button"
                   onClick={addSkill}
-                  className="bg-black text-white p-2 rounded-xl hover:bg-[#FF3B30] transition-all"
+                  className="bg-black text-white p-2 rounded-xl hover:bg-[#FF3B30] transition-all cursor-pointer"
                 >
                   <Plus size={18} />
                 </button>
@@ -334,8 +492,9 @@ export default function CreateJobPage() {
                   Matrix
                 </label>
                 <button
+                  type="button"
                   onClick={() => setQuestions([...questions, ""])}
-                  className="text-[9px] font-black uppercase bg-black text-white px-4 py-2 rounded-xl hover:bg-[#FF3B30] transition-all shadow-md"
+                  className="text-[9px] font-black uppercase bg-black text-white px-4 py-2 rounded-xl hover:bg-[#FF3B30] transition-all shadow-md cursor-pointer"
                 >
                   + Add Query
                 </button>
@@ -361,10 +520,11 @@ export default function CreateJobPage() {
                     />
                     {questions.length > 1 && (
                       <button
+                        type="button"
                         onClick={() =>
                           setQuestions(questions.filter((_, idx) => idx !== i))
                         }
-                        className="text-gray-300 hover:text-rose-500 transition-colors"
+                        className="text-gray-300 hover:text-rose-500 transition-colors cursor-pointer"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -384,7 +544,7 @@ export default function CreateJobPage() {
             </h3>
 
             <div className="space-y-6">
-              {/* BUDGETING - REQUIRED (IF PAID) */}
+              {/* BUDGETING */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center px-1">
                   <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
@@ -393,14 +553,16 @@ export default function CreateJobPage() {
                   </label>
                   <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
                     <button
+                      type="button"
                       onClick={() => setIsPaid(true)}
-                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isPaid ? "bg-black text-white shadow-sm" : "text-gray-400"}`}
+                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${isPaid ? "bg-black text-white shadow-sm" : "text-gray-400"}`}
                     >
                       Paid
                     </button>
                     <button
+                      type="button"
                       onClick={() => setIsPaid(false)}
-                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${!isPaid ? "bg-black text-white shadow-sm" : "text-gray-400"}`}
+                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${!isPaid ? "bg-black text-white shadow-sm" : "text-gray-400"}`}
                     >
                       Unpaid
                     </button>
@@ -448,7 +610,7 @@ export default function CreateJobPage() {
                   <select
                     value={workType}
                     onChange={(e) => setWorkType(e.target.value)}
-                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase outline-none"
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer"
                   >
                     <option value="full-time">Full-Time</option>
                     <option value="internship">Internship</option>
@@ -462,7 +624,7 @@ export default function CreateJobPage() {
                     disabled={workType !== "internship"}
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    className={`w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase outline-none ${workType !== "internship" && "opacity-20"}`}
+                    className={`w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer ${workType !== "internship" && "opacity-20"}`}
                   >
                     <option value="1 Month">1 Mo</option>
                     <option value="3 Months">3 Mo</option>
@@ -527,7 +689,7 @@ export default function CreateJobPage() {
                       </span>
                       <X
                         size={14}
-                        className="hover:text-[#FF3B30] transition-colors"
+                        className="hover:text-[#FF3B30] transition-colors cursor-pointer"
                         onClick={(e) => {
                           e.preventDefault();
                           setAttachment(null);
@@ -547,9 +709,9 @@ export default function CreateJobPage() {
 
             <div className="pt-4">
               <button
-                onClick={handleCreate}
+                onClick={handleCreateIntent} // 🔥 Calls pre-validator with Dialog block guard
                 disabled={loading || !companyProfile}
-                className="w-full bg-black text-white py-6 rounded-[1.8rem] flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.2em] hover:bg-[#FF3B30] transition-all shadow-xl shadow-gray-200 active:scale-95 disabled:bg-gray-200 disabled:shadow-none"
+                className="w-full bg-black text-white py-6 rounded-[1.8rem] flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.2em] hover:bg-[#FF3B30] transition-all shadow-xl shadow-gray-200 active:scale-95 disabled:bg-gray-200 disabled:shadow-none cursor-pointer"
               >
                 {loading ? (
                   "INITIALIZING..."

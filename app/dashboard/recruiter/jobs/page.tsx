@@ -19,7 +19,6 @@ import {
   RefreshCcw,
   DollarSign,
   Clock,
-  Calendar,
 } from "lucide-react";
 
 // --- CUSTOM TOAST NOTIFICATION ---
@@ -59,6 +58,9 @@ export default function RecruiterJobsPage() {
     msg: string;
     type: "success" | "error";
   } | null>(null);
+
+  // 🔥 CUSTOM DELETE DIALOG OVERLAY STATE
+  const [deleteTargetJob, setDeleteTargetJob] = useState<any | null>(null);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -164,6 +166,27 @@ export default function RecruiterJobsPage() {
     }
   };
 
+  // 🔥 CORE REMOVE EXECUTION PIPELINE
+  const executeJobDeletion = async () => {
+    if (!deleteTargetJob) return;
+
+    try {
+      const { error } = await supabase
+        .from("jobs")
+        .delete()
+        .eq("id", deleteTargetJob.id);
+
+      if (error) throw error;
+
+      setJobs((prev) => prev.filter((j) => j.id !== deleteTargetJob.id));
+      showToast("Job removed successfully");
+    } catch (err) {
+      showToast("Failed to remove job", "error");
+    } finally {
+      setDeleteTargetJob(null);
+    }
+  };
+
   const navItems = [
     { name: "Dashboard", href: "/dashboard/recruiter", icon: LayoutDashboard },
     { name: "Jobs", href: "/dashboard/recruiter/jobs", icon: Briefcase },
@@ -182,7 +205,7 @@ export default function RecruiterJobsPage() {
     );
 
   return (
-    <div className="bg-white min-h-screen flex p-6 gap-6 text-black">
+    <div className="bg-white min-h-screen flex p-6 gap-6 text-black relative overflow-x-hidden">
       <AnimatePresence>
         {toast && (
           <Toast
@@ -193,16 +216,61 @@ export default function RecruiterJobsPage() {
         )}
       </AnimatePresence>
 
+      {/* 🔥 DYNAMIC BENTO GUARD DELETE MODAL OVERLAY */}
+      <AnimatePresence>
+        {deleteTargetJob && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl border border-gray-100 p-8 max-w-sm w-full shadow-[0_30px_70px_rgba(0,0,0,0.15)] text-center space-y-6"
+            >
+              <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500 border border-red-100">
+                <Trash2 size={20} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-black uppercase tracking-wider text-black">
+                  Purge Pipeline Position
+                </h3>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-normal leading-relaxed px-2">
+                  Are you absolutely certain you want to delete the{" "}
+                  <span className="text-black font-black">
+                    "{deleteTargetJob.title}"
+                  </span>{" "}
+                  track? This matrix operational data branch cannot be
+                  recovered.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={() => setDeleteTargetJob(null)}
+                  className="bg-gray-50 text-gray-400 text-[10px] font-black uppercase tracking-widest py-3.5 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  No, Cancel
+                </button>
+                <button
+                  onClick={executeJobDeletion}
+                  className="bg-black text-white text-[10px] font-black uppercase tracking-widest py-3.5 rounded-xl hover:bg-red-600 transition-colors shadow-md cursor-pointer"
+                >
+                  Yes, Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* SIDEBAR - EXACTLY SAME AS DASHBOARD */}
       <motion.div
         animate={{ width: collapsed ? 80 : 260 }}
         transition={{ duration: 0.25 }}
-        className="rounded-2xl p-4 shadow-[0_10px_30px_rgb(0,0,0,0.05)] bg-white border border-gray-50 flex flex-col justify-between"
+        className="rounded-2xl p-4 shadow-[0_10px_30px_rgb(0,0,0,0.05)] bg-white border border-gray-50 flex flex-col justify-between h-[calc(100vh-48px)] sticky top-6"
       >
         <div>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="mb-6 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+            className="mb-6 hover:bg-gray-100 p-2 rounded-lg transition-colors cursor-pointer"
           >
             <Menu />
           </button>
@@ -213,6 +281,7 @@ export default function RecruiterJobsPage() {
                 <img
                   src={company.logo_url}
                   className="w-full h-full object-cover"
+                  alt="Company Logo"
                 />
               ) : (
                 <span className="font-bold text-gray-400">
@@ -267,7 +336,7 @@ export default function RecruiterJobsPage() {
         <header className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 italic">
-              Job Management.
+              Job Management<span className="text-red-500">.</span>
             </h1>
             <p className="text-gray-400 text-sm">
               Create and track your hiring pipelines.
@@ -276,7 +345,7 @@ export default function RecruiterJobsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={loadData}
-              className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
+              className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 cursor-pointer"
             >
               <RefreshCcw
                 size={18}
@@ -285,7 +354,7 @@ export default function RecruiterJobsPage() {
             </button>
             <button
               onClick={() => router.push("/dashboard/recruiter/jobs/create")}
-              className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold text-sm shadow-xl shadow-gray-100"
+              className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold text-sm shadow-xl shadow-gray-200 hover:bg-red-500 transition-colors cursor-pointer"
             >
               <Plus size={18} strokeWidth={3} /> Post Job
             </button>
@@ -364,13 +433,13 @@ export default function RecruiterJobsPage() {
                       />
                       <button
                         onClick={() => toggleStatus(job)}
-                        className={`relative flex-1 text-[10px] font-black uppercase z-10 ${job.status === "open" ? "text-gray-900" : "text-gray-400"}`}
+                        className={`relative flex-1 text-[10px] font-black uppercase z-10 cursor-pointer ${job.status === "open" ? "text-gray-900" : "text-gray-400"}`}
                       >
                         Open
                       </button>
                       <button
                         onClick={() => toggleStatus(job)}
-                        className={`relative flex-1 text-[10px] font-black uppercase z-10 ${job.status === "closed" ? "text-red-500" : "text-gray-400"}`}
+                        className={`relative flex-1 text-[10px] font-black uppercase z-10 cursor-pointer ${job.status === "closed" ? "text-red-500" : "text-gray-400"}`}
                       >
                         Closed
                       </button>
@@ -378,19 +447,8 @@ export default function RecruiterJobsPage() {
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={async () => {
-                          if (confirm("Delete this job?")) {
-                            await supabase
-                              .from("jobs")
-                              .delete()
-                              .eq("id", job.id);
-                            setJobs((prev) =>
-                              prev.filter((j) => j.id !== job.id),
-                            );
-                            showToast("Job removed");
-                          }
-                        }}
-                        className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                        onClick={() => setDeleteTargetJob(job)} // 🔥 Opens local premium bento modal confirmation
+                        className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -400,7 +458,7 @@ export default function RecruiterJobsPage() {
                             `/dashboard/recruiter/applications?job=${job.id}`,
                           )
                         }
-                        className="p-2.5 bg-gray-900 text-white rounded-xl shadow-lg shadow-gray-200 hover:bg-red-500 transition-all"
+                        className="p-2.5 bg-gray-900 text-white rounded-xl shadow-lg shadow-gray-200 hover:bg-red-500 transition-all cursor-pointer"
                       >
                         <ArrowRight size={18} strokeWidth={3} />
                       </button>

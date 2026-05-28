@@ -174,28 +174,40 @@ function ApplicationsContent() {
           break;
       }
 
-      // 🔥 EXPLICIT GENERATION OF UUID FOR KEY CONSTRAINTS VALIDATION
-      const generatedNotificationId = crypto.randomUUID();
+      // 1. Core Internal Site Website Logs Insertion
+      await supabase.from("notifications_website").insert({
+        user_id: targetCandidateId,
+        title: notifyTitle,
+        message: notifyMessage,
+        type: "application_stage",
+        link: "/dashboard/candidate",
+        read: false,
+        created_at: new Date().toISOString(),
+      });
 
-      const { error: dbInsertError } = await supabase
-        .from("notifications_website")
-        .insert({
-          id: generatedNotificationId, // Explicit dynamic primary key injection binding scope
-          user_id: targetCandidateId,
-          title: notifyTitle,
-          message: notifyMessage,
-          type: "application_stage",
-          link: "/dashboard/candidate",
-          read: false,
-          created_at: new Date().toISOString(),
-        });
-
-      if (dbInsertError) {
-        console.error(
-          "Rejection Exception logs on site engine:",
-          dbInsertError.message,
-        );
-        alert(`DB Insert Error: ${dbInsertError.message}`);
+      // 2. 🔥 LIVE BACKGROUND SYNC EMAIL CALL USING NEXT ROUTE HANDLER
+      if (currentApp.profiles?.email) {
+        fetch("/api/send-status-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: currentApp.profiles.email,
+            name: currentApp.profiles.name,
+            jobTitle: jobTitle,
+            companyName: companyName,
+            stage: stage,
+          }),
+        })
+          .then((res) => {
+            if (!res.ok)
+              console.error("Email Dispatch Endpoint Response Exception");
+          })
+          .catch((err) =>
+            console.error(
+              "Network interface connection failure for mails context:",
+              err,
+            ),
+          );
       }
     } catch (notifyErr) {
       console.error(
