@@ -14,17 +14,17 @@ import {
 } from "lucide-react";
 
 // =========================================================================
-// 🔥 THE COMPLETE MASTER HARDCODED DATA POOL (ALL 7 RECRUITMENT DOMAINS)
+// THE MASTER DATA POOL (ALL 7 RECRUITMENT DOMAINS)
 // =========================================================================
 
 const APTITUDE_POOL = [
   {
     id: "apt-01",
     question:
-      "A training batch of 25 horses needs to be filtered to find the top 3 fastest runners. If a race track can only fit 5 horses at once, what is the minimum number of race matches required to accurately calculate the top 3?",
-    options: ["5", "6", "7", "8"],
-    correct: "7",
-    hint: "Group them into 5 initial heats, then strategically race the top performers.",
+      "In a high-frequency trading server architecture, 1% of the connected node ports experience sudden memory leaks. A real-time automation watch script detects 90% of actual leaks, but has a 5% false-positive rate on healthy nodes. If a node triggers an alert loop, what is the exact probability that it actually has a memory leak?",
+    options: ["15.3%", "23.1%", "90.0%", "8.2%"],
+    correct: "15.3%",
+    hint: "Apply Bayes Theorem: P(Leak|Alert) = P(Alert|Leak) * P(Leak) / P(Alert).",
   },
 ];
 
@@ -48,7 +48,7 @@ const DSA_POOL = [
       "O(N^2) Space-Efficient",
       "O(N log N) Sorted Pivot",
       "O(N) Hash Map Optimization",
-      "O(1) Constant Constant",
+      "O(1) Constant",
     ],
     correct: "O(N) Hash Map Optimization",
     hint: "Using a single pass with a companion hash map yields sub-linear lookups.",
@@ -62,7 +62,7 @@ const FINANCE_POOL = [
       "An organization holds ₹5,00,500 in liquid cash equivalents and short-term market blocks, with total current liabilities locked at ₹2,50,250. Calculate the precise Acid-Test (Quick) Ratio metrics for this allocation stream.",
     options: ["1.5 : 1", "2.0 : 1", "0.75 : 1", "2.5 : 1"],
     correct: "2.0 : 1",
-    hint: "Quick Ratio = (Current Assets - Inventory) / Current Liabilities. Here cash ratios scale clean.",
+    hint: "Quick Ratio = (Current Assets - Inventory) / Current Liabilities.",
   },
 ];
 
@@ -210,7 +210,6 @@ export default function ActiveGameArenaPage() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // 🔥 DEFINED CORRECTLY NOW
   const handleOptionSelect = (option: string) => {
     setSelectedAnswer(option);
   };
@@ -222,10 +221,13 @@ export default function ActiveGameArenaPage() {
     }
 
     const currentQuestion = questions[currentIdx];
-    const updatedAnswers = {
+
+    // ✨ TypeScript Explicit Record Definition - Fixes indexing type error
+    const updatedAnswers: Record<string, string> = {
       ...answersLog,
       [currentQuestion.id]: selectedAnswer,
     };
+
     setAnswersLog(updatedAnswers);
 
     if (currentIdx < questions.length - 1) {
@@ -264,6 +266,7 @@ export default function ActiveGameArenaPage() {
         return supabase.from("game_submissions").insert({
           user_id: user.id,
           challenge_id: q.id,
+          game_type: trackType,
           time_taken_seconds: totalDurationSeconds / questions.length,
           points_awarded: isCorrect ? 10 : 0,
           is_correct: isCorrect,
