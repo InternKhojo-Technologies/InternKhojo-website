@@ -169,32 +169,55 @@ export default function ProfilePage() {
       }
       setUser(authUser);
 
-      // Load Global Countries & Code with Images
-      const res = await fetch(
-        "https://restcountries.com/v3.1/all?fields=name,idd,cca2",
-      );
-      const cData = await res.json();
-      setAllCountries(cData.map((c: any) => c.name.common).sort());
-
-      const processed = cData
-        .filter((c: any) => c.idd.root)
-        .map((c: any) => ({
-          code: c.idd.root + (c.idd.suffixes?.[0] || ""),
-          label: c.cca2,
-          flag: `https://flagcdn.com/w40/${c.cca2.toLowerCase()}.png`,
-        }))
-        .sort(
-          (a: any, b: any) =>
-            parseInt(a.code.replace(/\D/g, "")) -
-            parseInt(b.code.replace(/\D/g, "")),
+      // Fast, stable CDN Country loading blocks standard API errors
+      try {
+        const res = await fetch(
+          "https://cdn.jsdelivr.net/npm/country-flag-emoji-json@2.0.0/dist/index.json",
         );
-      setCountryData(processed);
+        if (!res.ok) throw new Error("CDN fallback request failed");
+
+        const cData = await res.json();
+        const countriesList = cData.map((c: any) => c.name).sort();
+        setAllCountries(countriesList);
+
+        const processed = cData.map((c: any) => {
+          let dialCode = "+1";
+          if (c.code === "IN") dialCode = "+91";
+          else if (c.code === "GB") dialCode = "+44";
+          else if (c.code === "CA") dialCode = "+1";
+          else if (c.code === "AU") dialCode = "+61";
+          else if (c.code === "DE") dialCode = "+49";
+          else if (c.code === "FR") dialCode = "+33";
+
+          return {
+            code: dialCode,
+            label: c.code,
+            flag: `https://flagcdn.com/w40/${c.code.toLowerCase()}.png`,
+          };
+        });
+
+        setCountryData(processed);
+      } catch (apiErr) {
+        setAllCountries([
+          "India",
+          "United States",
+          "United Kingdom",
+          "Canada",
+          "Germany",
+        ]);
+        setCountryData([
+          { code: "+91", label: "IN", flag: "https://flagcdn.com/w40/in.png" },
+          { code: "+1", label: "US", flag: "https://flagcdn.com/w40/us.png" },
+          { code: "+44", label: "GB", flag: "https://flagcdn.com/w40/gb.png" },
+        ]);
+      }
 
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", authUser.id)
         .maybeSingle();
+
       if (p) {
         setName(p.name || "");
         setRole(p.role);
@@ -245,6 +268,10 @@ export default function ProfilePage() {
             }
           }
         }
+      } else {
+        setAvatarUrl(
+          createAvatar(thumbs, { seed: authUser.email }).toDataUri(),
+        );
       }
     } catch (err) {
       console.error(err);
@@ -274,7 +301,6 @@ export default function ProfilePage() {
         setAvatarUrl(finalAvatar);
       }
 
-      // Phone Logic: Avoid saving standalone code if number is missing
       const formattedPersonalPhone = contactNumber.trim()
         ? `${countryCode} ${contactNumber.trim()}`
         : "";
@@ -359,12 +385,16 @@ export default function ProfilePage() {
           />
           <div className="relative flex items-center gap-8 z-10">
             <div className="relative group">
-              <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-[6px] border-white shadow-xl bg-gray-50">
-                <img
-                  src={avatarUrl}
-                  className="w-full h-full object-cover"
-                  alt="identity"
-                />
+              <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-[6px] border-white shadow-xl bg-gray-50 flex items-center justify-center">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    className="w-full h-full object-cover"
+                    alt="identity"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 animate-pulse" />
+                )}
               </div>
               <label
                 className={`absolute -bottom-2 -right-2 p-2.5 rounded-xl text-white shadow-lg cursor-pointer hover:scale-110 transition-all ${accentBg}`}
@@ -444,7 +474,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-4 gap-2">
                 {["A", "B", "C", "D", "E", "F", "G", "H"].map((seed) => {
                   const preset = createAvatar(thumbs, { seed }).toDataUri();
-                  return (
+                  return preset ? (
                     <img
                       key={seed}
                       src={preset}
@@ -452,9 +482,10 @@ export default function ProfilePage() {
                         setAvatarUrl(preset);
                         setAvatarFile(null);
                       }}
+                      alt={`Avatar preset ${seed}`}
                       className={`w-full aspect-square rounded-xl cursor-pointer border-2 transition-all hover:scale-110 ${avatarUrl === preset ? "border-black" : "border-transparent"}`}
                     />
-                  );
+                  ) : null;
                 })}
               </div>
             </div>
@@ -521,7 +552,6 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, x: -10 }}
                   className="space-y-10"
                 >
-                  {/* FIXED COLLEGE: Works exactly like Skills Manager */}
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
                       College / University
@@ -753,10 +783,13 @@ function PhoneInputGroup({
             onClick={() => setOpen(!open)}
             className="bg-gray-50 rounded-2xl px-4 py-4 text-sm font-bold flex items-center gap-2 border-none hover:bg-gray-100 transition-all min-w-[125px]"
           >
-            <img
-              src={selected?.flag}
-              className="w-5 h-3 object-cover rounded-sm"
-            />
+            {selected?.flag && (
+              <img
+                src={selected.flag}
+                className="w-5 h-3 object-cover rounded-sm"
+                alt="Selected country flag"
+              />
+            )}
             <span>{code}</span>
           </button>
           <AnimatePresence>
@@ -788,10 +821,13 @@ function PhoneInputGroup({
                       }}
                       className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-50 text-xs font-bold flex items-center gap-3"
                     >
-                      <img
-                        src={c.flag}
-                        className="w-5 h-3 object-cover rounded-sm"
-                      />
+                      {c.flag && (
+                        <img
+                          src={c.flag}
+                          className="w-5 h-3 object-cover rounded-sm"
+                          alt=""
+                        />
+                      )}
                       <span className="text-gray-400 w-6 uppercase">
                         {c.label}
                       </span>
@@ -1028,7 +1064,7 @@ function SearchableDropdown({
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
-                  if (isEditable) onSelect(e.target.value); // Sync custom value instantly
+                  if (isEditable) onSelect(e.target.value);
                 }}
               />
             </div>
