@@ -7,6 +7,23 @@ import { motion } from "framer-motion";
 import { Twitter, Instagram, Linkedin, Github } from "lucide-react";
 
 export default function Footer() {
+  // Navigation Helper Function
+  const getLinkHref = (sectionTitle: string, linkName: string) => {
+    if (sectionTitle === "Company") {
+      switch (linkName) {
+        case "About":
+          return "/about";
+        case "Careers":
+          return "/careers";
+        case "Trust & safety":
+          return "/privacy";
+        default:
+          return "#"; // Contact & Partners remain un-redirected
+      }
+    }
+    return "#";
+  };
+
   return (
     /* 🔥 Added pb-20 on mobile to clear the navbar, md:pb-4 for desktop */
     <footer className="w-full pt-1 pb-20 md:pb-4 px-1 lg:px-2 antialiased">
@@ -104,7 +121,7 @@ export default function Footer() {
                   {section.links.map((link, j) => (
                     <li key={j}>
                       <Link
-                        href="#"
+                        href={getLinkHref(section.title, link)}
                         className="text-[13px] text-gray-400 hover:text-white transition-all duration-300 font-medium inline-flex items-center gap-1 group/link"
                       >
                         <span className="group-hover/link:translate-x-1.5 transition-transform duration-300">
