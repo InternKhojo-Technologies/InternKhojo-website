@@ -39,7 +39,7 @@ export default function Navbar() {
     { name: "About", href: "/about", icon: Info },
   ];
 
-  // 🔥 PROFILE STRENGTH LOGIC
+  // PROFILE STRENGTH LOGIC
   const getChecklist = (p: any) => {
     if (!p) return [];
     const items = [];
@@ -65,7 +65,7 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 🔥 SESSION CACHE & AUTH
+  // SESSION CACHE & AUTH
   useEffect(() => {
     const cachedUser = localStorage.getItem("ik_user");
     const cachedProfile = localStorage.getItem("ik_profile");
@@ -104,10 +104,12 @@ export default function Navbar() {
     };
   }, []);
 
+  // REALTIME NOTIFICATIONS SUBSCRIPTION
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
+
     const channel = supabase
-      .channel("notifications-realtime")
+      .channel(`notifications-${user.id}`)
       .on(
         "postgres_changes",
         {
@@ -119,10 +121,11 @@ export default function Navbar() {
         (payload) => setNotifications((prev) => [payload.new, ...prev]),
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]);
 
   const getUser = async () => {
     const {
@@ -176,6 +179,7 @@ export default function Navbar() {
   };
 
   function timeAgo(dateString: string) {
+    if (!dateString) return "Just now";
     const diff = Math.floor(
       (new Date().getTime() - new Date(dateString).getTime()) / 1000,
     );
@@ -186,10 +190,14 @@ export default function Navbar() {
   }
 
   const today = notifications.filter(
-    (n) => new Date(n.created_at).toDateString() === new Date().toDateString(),
+    (n) =>
+      n.created_at &&
+      new Date(n.created_at).toDateString() === new Date().toDateString(),
   );
   const earlier = notifications.filter(
-    (n) => new Date(n.created_at).toDateString() !== new Date().toDateString(),
+    (n) =>
+      n.created_at &&
+      new Date(n.created_at).toDateString() !== new Date().toDateString(),
   );
 
   return (
@@ -225,7 +233,7 @@ export default function Navbar() {
 
             <div className="flex items-center gap-3">
               {!user ? (
-                /* 🔥 SIGN UP DROPDOWN CONTROLLER WRAPPER FIXED */
+                /* SIGN UP DROPDOWN CONTROLLER WRAPPER */
                 <div
                   className="flex items-center gap-2 relative"
                   onClick={(e) => e.stopPropagation()}
@@ -273,7 +281,7 @@ export default function Navbar() {
                         const opening = !notifOpen;
                         setNotifOpen(opening);
                         if (opening) setProfileOpen(false);
-                        if (opening) {
+                        if (opening && notifications.some((n) => !n.read)) {
                           await supabase
                             .from("notifications_website")
                             .update({ read: true })
@@ -284,7 +292,7 @@ export default function Navbar() {
                           );
                         }
                       }}
-                      className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition"
+                      className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition relative"
                     >
                       <svg
                         width="20"
@@ -298,7 +306,7 @@ export default function Navbar() {
                         <path d="M13.73 21a2 2 0 01-3.46 0" />
                       </svg>
                       {notifications.some((n) => !n.read) && (
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+                        <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-blue-600 rounded-full ring-2 ring-white" />
                       )}
                     </button>
 
