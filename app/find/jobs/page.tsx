@@ -11,7 +11,7 @@ import {
   ChevronRight,
   Zap,
   Filter,
-  Banknote,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -23,6 +23,7 @@ export default function JobsPage() {
   // Search and Filter States
   const [titleQuery, setTitleQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
+  const [companyQuery, setCompanyQuery] = useState(""); // 👈 Added Company Query State
   const [showFilters, setShowFilters] = useState(false);
   const [payType, setPayType] = useState("all");
   const [selectedSkill, setSelectedSkill] = useState("");
@@ -62,14 +63,21 @@ export default function JobsPage() {
       const matchesTitle = job.title
         .toLowerCase()
         .includes(titleQuery.toLowerCase());
+
       const matchesLocation = (job.location || "")
         .toLowerCase()
         .includes(locationQuery.toLowerCase());
+
+      // 👈 Added Company Name Match Condition
+      const matchesCompany = (job.companies?.name || "")
+        .toLowerCase()
+        .includes(companyQuery.toLowerCase());
 
       const isPaid =
         job.stipend &&
         job.stipend !== "0" &&
         job.stipend.toLowerCase() !== "unpaid";
+
       const matchesPay =
         payType === "all" ? true : payType === "paid" ? isPaid : !isPaid;
 
@@ -80,9 +88,15 @@ export default function JobsPage() {
               s.toLowerCase().includes(selectedSkill.toLowerCase()),
             );
 
-      return matchesTitle && matchesLocation && matchesPay && matchesSkill;
+      return (
+        matchesTitle &&
+        matchesLocation &&
+        matchesCompany &&
+        matchesPay &&
+        matchesSkill
+      );
     });
-  }, [jobs, titleQuery, locationQuery, payType, selectedSkill]);
+  }, [jobs, titleQuery, locationQuery, companyQuery, payType, selectedSkill]);
 
   return (
     <div className="bg-[#FAFAFA] min-h-screen text-black pb-20 select-none antialiased">
@@ -147,7 +161,24 @@ export default function JobsPage() {
 
           {/* DYNAMIC METRIC SELECTION DROPBOX */}
           {showFilters && (
-            <div className="absolute top-full mt-4 left-0 right-0 z-50 bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-left animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute top-full mt-4 left-0 right-0 z-50 bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl grid grid-cols-1 md:grid-cols-3 gap-6 text-left animate-in fade-in zoom-in-95 duration-150">
+              {/* Filter 1: Company Filter */}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                  Company Name
+                </p>
+                <div className="relative flex items-center">
+                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                  <input
+                    value={companyQuery}
+                    onChange={(e) => setCompanyQuery(e.target.value)}
+                    placeholder="e.g. Google, Stripe"
+                    className="w-full bg-slate-50 border border-slate-200 pl-9 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-black font-bold text-slate-700 placeholder:text-slate-300"
+                  />
+                </div>
+              </div>
+
+              {/* Filter 2: Compensation Structure */}
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
                   Compensation structure
@@ -169,6 +200,8 @@ export default function JobsPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Filter 3: Skills */}
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
                   Target Competence / Skills
@@ -177,7 +210,7 @@ export default function JobsPage() {
                   value={selectedSkill}
                   onChange={(e) => setSelectedSkill(e.target.value)}
                   placeholder="e.g. Next.js, Figma, Tailwind"
-                  className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-xs outline-none focus:border-black font-bold text-slate-700"
+                  className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-xs outline-none focus:border-black font-bold text-slate-700 placeholder:text-slate-300"
                 />
               </div>
             </div>
@@ -192,7 +225,7 @@ export default function JobsPage() {
           </h1>
         </div>
 
-        {/* Side-by-Side Job Grid (Sleek UI Layout Updated) */}
+        {/* Side-by-Side Job Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -279,7 +312,9 @@ export default function JobsPage() {
                         {job.salary || job.stipend || "Competitive"}
                       </p>
                       <span
-                        className={`text-[9px] font-black uppercase tracking-wider block mt-1 ${isPaid ? "text-emerald-600" : "text-slate-400"}`}
+                        className={`text-[9px] font-black uppercase tracking-wider block mt-1 ${
+                          isPaid ? "text-emerald-600" : "text-slate-400"
+                        }`}
                       >
                         {isPaid ? "Paid Track" : "Unpaid Exposure"}
                       </span>
