@@ -609,7 +609,7 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
             selected={selectedRange}
             onDayClick={handleDayClick}
             numberOfMonths={1}
-            className={{
+            classNames={{
               month_caption: "text-xs font-bold text-gray-800",
               head_cell: "text-[11px] font-medium text-gray-400 p-1",
               cell: "p-0.5 text-center",
