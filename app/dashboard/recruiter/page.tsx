@@ -13,9 +13,7 @@ import {
   Calendar,
   RefreshCcw,
 } from "lucide-react";
-import { DayPicker, DateRange } from "react-day-picker";
 import { format } from "date-fns";
-import "react-day-picker/dist/style.css";
 
 // charts
 const LineChart = dynamic(() => import("recharts").then((m) => m.LineChart), {
@@ -495,14 +493,12 @@ export default function RecruiterDashboard() {
 
 function DateRangePicker({ range, setRange, size = "md" }: any) {
   const [activeTab, setActiveTab] = useState<"start" | "end" | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(
+    range.start ? new Date(range.start) : new Date(),
+  );
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  const selectedRange: DateRange | undefined = {
-    from: range.start ? new Date(range.start) : undefined,
-    to: range.end ? new Date(range.end) : undefined,
-  };
-
-  // Close calendar when clicking anywhere outside
+  // Close calendar on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -520,37 +516,75 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
     };
   }, [activeTab]);
 
-  const handleDayClick = (day: Date) => {
-    const clickedStr = format(day, "yyyy-MM-dd");
+  // Calendar Days Calculation
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const daysArray = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      arr.push(null);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      arr.push(new Date(year, month, d));
+    }
+    return arr;
+  }, [year, month, firstDayOfMonth, daysInMonth]);
+
+  const handleDateClick = (date: Date) => {
+    const yearStr = date.getFullYear();
+    const monthStr = String(date.getMonth() + 1).padStart(2, "0");
+    const dayStr = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${yearStr}-${monthStr}-${dayStr}`;
 
     if (activeTab === "start") {
-      // If start date is picked after end date, adjust end date automatically
-      if (range.end && new Date(clickedStr) > new Date(range.end)) {
-        setRange({ start: clickedStr, end: clickedStr });
+      if (range.end && new Date(formattedDate) > new Date(range.end)) {
+        setRange({ start: formattedDate, end: formattedDate });
       } else {
-        setRange({ ...range, start: clickedStr });
+        setRange({ ...range, start: formattedDate });
       }
-      setActiveTab("end"); // Auto-switch to end date picking
+      setActiveTab("end");
     } else if (activeTab === "end") {
-      // If end date picked is before start date, set start date as clicked date
-      if (range.start && new Date(clickedStr) < new Date(range.start)) {
-        setRange({ start: clickedStr, end: clickedStr });
+      if (range.start && new Date(formattedDate) < new Date(range.start)) {
+        setRange({ start: formattedDate, end: formattedDate });
       } else {
-        setRange({ ...range, end: clickedStr });
+        setRange({ ...range, end: formattedDate });
       }
-      setActiveTab(null); // Close popover
+      setActiveTab(null);
     }
   };
 
+  const isSelectedStart = (date: Date) => {
+    if (!range.start) return false;
+    const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return dStr === range.start;
+  };
+
+  const isSelectedEnd = (date: Date) => {
+    if (!range.end) return false;
+    const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return dStr === range.end;
+  };
+
+  const isInRange = (date: Date) => {
+    if (!range.start || !range.end) return false;
+    const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return dStr > range.start && dStr < range.end;
+  };
+
+  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+
   return (
     <div ref={pickerRef} className="relative inline-block text-left">
-      {/* SEPARATE START & END SELECTION BOXES */}
+      {/* SEPARATE START & END BUTTONS */}
       <div
         className={`flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg shadow-sm ${
           size === "sm" ? "p-1 text-[11px]" : "p-1.5 text-xs"
         }`}
       >
-        {/* Start Date Button */}
         <button
           type="button"
           onClick={() => setActiveTab(activeTab === "start" ? null : "start")}
@@ -573,7 +607,6 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
 
         <span className="text-gray-300 font-bold text-xs">-</span>
 
-        {/* End Date Button */}
         <button
           type="button"
           onClick={() => setActiveTab(activeTab === "end" ? null : "end")}
@@ -593,29 +626,88 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
         </button>
       </div>
 
-      {/* HIGHLIGHTED RANGE CALENDAR POPOVER */}
+      {/* IMPROVED CONNECTED RANGE CALENDAR POPOVER */}
       {activeTab && (
-        <div className="absolute right-0 mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-2xl p-1 scale-90 origin-top-right transition-transform">
-          <div className="px-3 py-1 bg-gray-50 border-b border-gray-100 text-[10px] font-bold uppercase text-gray-500 rounded-t-lg">
-            Pick {activeTab === "start" ? "Start Date" : "End Date"}
+        <div className="absolute right-0 mt-1 z-[999] bg-white border border-gray-200 rounded-2xl shadow-2xl p-3 w-[270px]">
+          {/* Header Bar */}
+          <div className="flex items-center justify-between mb-3 px-1">
+            <span className="text-xs font-bold text-gray-900">
+              {currentMonth.toLocaleString("en-US", {
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={prevMonth}
+                className="h-7 w-7 flex items-center justify-center hover:bg-red-50 rounded-full text-red-600 transition-colors font-extrabold text-base leading-none"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="h-7 w-7 flex items-center justify-center hover:bg-red-50 rounded-full text-red-600 transition-colors font-extrabold text-base leading-none"
+              >
+                ›
+              </button>
+            </div>
           </div>
-          <DayPicker
-            mode="range"
-            defaultMonth={
-              activeTab === "end" && selectedRange?.to
-                ? selectedRange.to
-                : selectedRange?.from
-            }
-            selected={selectedRange}
-            onDayClick={handleDayClick}
-            numberOfMonths={1}
-            classNames={{
-              month_caption: "text-xs font-bold text-gray-800",
-              head_cell: "text-[11px] font-medium text-gray-400 p-1",
-              cell: "p-0.5 text-center",
-              day: "h-7 w-7 text-xs font-medium rounded-md hover:bg-gray-100",
-            }}
-          />
+
+          {/* Weekday Header Grid */}
+          <div className="grid grid-cols-7 gap-0 text-center mb-1">
+            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+              <span
+                key={day}
+                className="text-[10px] font-bold text-gray-400 uppercase"
+              >
+                {day}
+              </span>
+            ))}
+          </div>
+
+          {/* Connected 7-Column Date Grid */}
+          <div className="grid grid-cols-7 gap-y-1 text-center">
+            {daysArray.map((date, idx) => {
+              if (!date) {
+                return <div key={`empty-${idx}`} className="h-7 w-full" />;
+              }
+
+              const isStart = isSelectedStart(date);
+              const isEnd = isSelectedEnd(date);
+              const inRange = isInRange(date);
+
+              return (
+                <div
+                  key={date.toISOString()}
+                  className={`relative flex items-center justify-center h-7 w-full ${
+                    inRange ? "bg-red-50 text-red-600" : ""
+                  } ${
+                    isStart && range.end && range.start !== range.end
+                      ? "bg-gradient-to-r from-transparent via-red-50 to-red-50"
+                      : ""
+                  } ${
+                    isEnd && range.start && range.start !== range.end
+                      ? "bg-gradient-to-l from-transparent via-red-50 to-red-50"
+                      : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleDateClick(date)}
+                    className={`h-7 w-7 text-xs flex items-center justify-center transition-all ${
+                      isStart || isEnd
+                        ? "bg-red-500 text-white font-bold rounded-full shadow-md z-10 scale-105"
+                        : "text-gray-700 hover:bg-gray-100 rounded-full"
+                    }`}
+                  >
+                    {date.getDate()}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
