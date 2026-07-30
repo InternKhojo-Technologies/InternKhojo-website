@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
@@ -13,6 +13,9 @@ import {
   Calendar,
   RefreshCcw,
 } from "lucide-react";
+import { DayPicker, DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import "react-day-picker/dist/style.css";
 
 // charts
 const LineChart = dynamic(() => import("recharts").then((m) => m.LineChart), {
@@ -115,12 +118,12 @@ export default function RecruiterDashboard() {
       if (jobErr) console.error("Job Fetch Error:", jobErr);
       setJobs(jobsData || []);
 
-      // 4. Get ALL Applications (EXPLICIT RELATIONSHIP FIX)
+      // 4. Get ALL Applications
       if (jobsData && jobsData.length > 0) {
         const jobIds = jobsData.map((j) => j.id);
         const { data: appsData, error: appErr } = await supabase
           .from("applications")
-          .select(`*, jobs!applications_job_id_fkey(title)`) // Fixed ambiguity here
+          .select(`*, jobs!applications_job_id_fkey(title)`)
           .in("job_id", jobIds);
 
         if (appErr) console.error("App Fetch Error:", appErr);
@@ -180,18 +183,19 @@ export default function RecruiterDashboard() {
     const filteredApps = apps.filter(
       (a) => new Date(a.created_at) >= start && new Date(a.created_at) <= end,
     );
-    const hired = filteredApps.filter((a) => a.stage === "hired").length;
+
+    // Filter applications table stage column
+    const hiredCount = apps.filter(
+      (a) => a.stage?.toString().trim().toLowerCase() === "hired",
+    ).length;
 
     return {
       totalJobs: jobs.length,
       totalApps: apps.length,
       periodApps: filteredApps.length,
-      hired,
+      hired: hiredCount,
       conversion: apps.length
-        ? Math.round(
-            (apps.filter((a) => a.stage === "hired").length / apps.length) *
-              100,
-          )
+        ? Math.round((hiredCount / apps.length) * 100)
         : 0,
     };
   }, [jobs, apps, globalRange]);
@@ -239,7 +243,7 @@ export default function RecruiterDashboard() {
       <motion.div
         animate={{ width: collapsed ? 80 : 260 }}
         transition={{ duration: 0.25 }}
-        className="rounded-2xl p-4 shadow-[0_10px_30px_rgb(0,0,0,0.05)] bg-white border border-gray-50 flex flex-col justify-between"
+        className="rounded-2xl p-4 shadow-[0_10px_30px_rgb(0,0,0,0.05)] bg-white border border-gray-50 flex flex-col justify-between z-10"
       >
         <div>
           <button
@@ -490,26 +494,130 @@ export default function RecruiterDashboard() {
 }
 
 function DateRangePicker({ range, setRange, size = "md" }: any) {
-  const inputClass = `bg-transparent border-none text-[11px] font-bold focus:ring-0 outline-none cursor-pointer ${size === "sm" ? "w-20" : "w-24"}`;
+  const [activeTab, setActiveTab] = useState<"start" | "end" | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  const selectedRange: DateRange | undefined = {
+    from: range.start ? new Date(range.start) : undefined,
+    to: range.end ? new Date(range.end) : undefined,
+  };
+
+  // Close calendar when clicking anywhere outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(event.target as Node)
+      ) {
+        setActiveTab(null);
+      }
+    };
+    if (activeTab) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [activeTab]);
+
+  const handleDayClick = (day: Date) => {
+    const clickedStr = format(day, "yyyy-MM-dd");
+
+    if (activeTab === "start") {
+      // If start date is picked after end date, adjust end date automatically
+      if (range.end && new Date(clickedStr) > new Date(range.end)) {
+        setRange({ start: clickedStr, end: clickedStr });
+      } else {
+        setRange({ ...range, start: clickedStr });
+      }
+      setActiveTab("end"); // Auto-switch to end date picking
+    } else if (activeTab === "end") {
+      // If end date picked is before start date, set start date as clicked date
+      if (range.start && new Date(clickedStr) < new Date(range.start)) {
+        setRange({ start: clickedStr, end: clickedStr });
+      } else {
+        setRange({ ...range, end: clickedStr });
+      }
+      setActiveTab(null); // Close popover
+    }
+  };
 
   return (
-    <div
-      className={`flex items-center gap-1 bg-white border border-gray-200 rounded-lg shadow-sm ${size === "sm" ? "px-1 py-0.5" : "px-2 py-1.5"}`}
-    >
-      <Calendar size={14} className="text-gray-400 mr-1" />
-      <input
-        type="date"
-        className={inputClass}
-        value={range.start}
-        onChange={(e) => setRange({ ...range, start: e.target.value })}
-      />
-      <span className="text-gray-300">-</span>
-      <input
-        type="date"
-        className={inputClass}
-        value={range.end}
-        onChange={(e) => setRange({ ...range, end: e.target.value })}
-      />
+    <div ref={pickerRef} className="relative inline-block text-left">
+      {/* SEPARATE START & END SELECTION BOXES */}
+      <div
+        className={`flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg shadow-sm ${
+          size === "sm" ? "p-1 text-[11px]" : "p-1.5 text-xs"
+        }`}
+      >
+        {/* Start Date Button */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === "start" ? null : "start")}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors ${
+            activeTab === "start"
+              ? "bg-red-50 text-red-600 font-bold border border-red-200"
+              : "hover:bg-gray-100 text-gray-700 font-medium"
+          }`}
+        >
+          <Calendar
+            size={12}
+            className={activeTab === "start" ? "text-red-500" : "text-gray-400"}
+          />
+          <span>
+            {range.start
+              ? format(new Date(range.start), "dd/MM/yyyy")
+              : "Start Date"}
+          </span>
+        </button>
+
+        <span className="text-gray-300 font-bold text-xs">-</span>
+
+        {/* End Date Button */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === "end" ? null : "end")}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors ${
+            activeTab === "end"
+              ? "bg-red-50 text-red-600 font-bold border border-red-200"
+              : "hover:bg-gray-100 text-gray-700 font-medium"
+          }`}
+        >
+          <Calendar
+            size={12}
+            className={activeTab === "end" ? "text-red-500" : "text-gray-400"}
+          />
+          <span>
+            {range.end ? format(new Date(range.end), "dd/MM/yyyy") : "End Date"}
+          </span>
+        </button>
+      </div>
+
+      {/* HIGHLIGHTED RANGE CALENDAR POPOVER */}
+      {activeTab && (
+        <div className="absolute right-0 mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-2xl p-1 scale-90 origin-top-right transition-transform">
+          <div className="px-3 py-1 bg-gray-50 border-b border-gray-100 text-[10px] font-bold uppercase text-gray-500 rounded-t-lg">
+            Pick {activeTab === "start" ? "Start Date" : "End Date"}
+          </div>
+          <DayPicker
+            mode="range"
+            defaultMonth={
+              activeTab === "end" && selectedRange?.to
+                ? selectedRange.to
+                : selectedRange?.from
+            }
+            selected={selectedRange}
+            onDayClick={handleDayClick}
+            numberOfMonths={1}
+            styles={{
+              caption: { fontSize: "13px" },
+              head_cell: { fontSize: "11px", padding: "4px" },
+              cell: { padding: "2px" },
+              day: { fontSize: "12px", width: "28px", height: "28px" },
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
