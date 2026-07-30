@@ -21,6 +21,7 @@ import {
   ArrowUpRight,
   ChevronDown,
   Eye,
+  CheckCircle2,
 } from "lucide-react";
 
 function timeAgo(dateString: string) {
@@ -47,6 +48,7 @@ export default function JobDetailPage() {
 
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [hasApplied, setHasApplied] = useState(false);
   const [resolvedDocUrl, setResolvedDocUrl] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -80,6 +82,23 @@ export default function JobDetailPage() {
     }
 
     setJob(data);
+
+    // Check if user has already applied
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: existingApp } = await supabase
+        .from("applications")
+        .select("id")
+        .eq("job_id", jobId)
+        .eq("user_id", user.id);
+
+      if (existingApp && existingApp.length > 0) {
+        setHasApplied(true);
+      }
+    }
 
     if (data?.attachment_url) {
       const rawUrl = data.attachment_url.trim();
@@ -120,12 +139,12 @@ export default function JobDetailPage() {
         <div className="pt-14 mb-16 flex items-center justify-between border-b border-slate-100 pb-6">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white hover:border-black transition-all active:scale-95"
+            className="flex items-center gap-2.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white hover:border-black transition-all active:scale-95 cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Return
           </button>
           <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-1 h-1 rounded-full bg-red-600 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
             Active Opportunity // {String(jobId || "").slice(0, 8)}
           </div>
         </div>
@@ -178,16 +197,29 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            {/* Description Card */}
+            {/* Description Card - PARSED RICH TEXT HTML RENDERING */}
             <div className="space-y-4 border-t border-slate-100 pt-10">
               <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 01 /
                 Profile Outline
               </h2>
-              <p className="text-sm text-slate-600 font-medium whitespace-pre-line leading-relaxed max-w-2xl pl-3.5 border-l-2 border-slate-100">
-                {job.description ||
-                  "No mission brief specified for this opportunity window."}
-              </p>
+
+              <div
+                className="text-sm text-slate-700 font-medium leading-relaxed max-w-2xl pl-3.5 border-l-2 border-slate-100
+                  [&_h1]:text-2xl [&_h1]:font-black [&_h1]:my-3 [&_h1]:text-slate-900 
+                  [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_h2]:text-slate-900 
+                  [&_h3]:text-lg [&_h3]:font-bold [&_h3]:my-2 [&_h3]:text-slate-900 
+                  [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 
+                  [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 
+                  [&_li]:my-1 
+                  [&_b]:font-black [&_strong]:font-black 
+                  [&_u]:underline"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    job.description ||
+                    "No mission brief specified for this opportunity window.",
+                }}
+              />
             </div>
 
             {/* Bento-Style Blueprint */}
@@ -276,7 +308,11 @@ export default function JobDetailPage() {
               </div>
 
               <div className="pt-2">
-                <ApplyButton job={job} />
+                <ApplyButton
+                  job={job}
+                  hasApplied={hasApplied}
+                  setHasApplied={setHasApplied}
+                />
               </div>
             </div>
           </div>
@@ -333,7 +369,15 @@ export default function JobDetailPage() {
 }
 
 // ================= MODULAR APPLICATION FORM SYSTEM =================
-function ApplyButton({ job }: { job: any }) {
+function ApplyButton({
+  job,
+  hasApplied,
+  setHasApplied,
+}: {
+  job: any;
+  hasApplied: boolean;
+  setHasApplied: (val: boolean) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [answers, setAnswers] = useState<any>({});
   const [loading, setLoading] = useState(false);
@@ -401,7 +445,6 @@ function ApplyButton({ job }: { job: any }) {
       return;
     }
 
-    // 🔥 FIXED: Standardized valid sorting syntax implementation key for storage list option matching
     const { data: files, error } = await supabase.storage
       .from("resume")
       .list(user.id, {
@@ -457,18 +500,32 @@ function ApplyButton({ job }: { job: any }) {
       .eq("user_id", user.id);
 
     if (existing && existing.length > 0) {
-      alert("Duplicate assignment stack error.");
+      alert("You have already applied for this role.");
+      setHasApplied(true);
       setLoading(false);
+      setOpen(false);
       return;
     }
 
-    if (
-      job.questions?.length > 0 &&
-      Object.keys(answers).length !== job.questions.length
-    ) {
-      alert("Please fill all questions.");
-      setLoading(false);
-      return;
+    // Check mandatory questions
+    if (job.questions?.length > 0) {
+      for (let i = 0; i < job.questions.length; i++) {
+        const q = job.questions[i];
+        const isRequired = typeof q === "object" ? q.required : true;
+        const answer = answers[i];
+
+        if (
+          isRequired &&
+          (answer === undefined ||
+            answer === "" ||
+            (Array.isArray(answer) && answer.length === 0))
+        ) {
+          const qTitle = typeof q === "object" ? q.title : q;
+          alert(`Please answer mandatory question: "${qTitle}"`);
+          setLoading(false);
+          return;
+        }
+      }
     }
 
     const { error } = await supabase.from("applications").insert({
@@ -483,16 +540,29 @@ function ApplyButton({ job }: { job: any }) {
     if (error) alert(error.message);
     else {
       alert("Applied successfully!");
+      setHasApplied(true);
       setOpen(false);
       setAnswers({});
     }
   };
 
+  // IF USER ALREADY APPLIED: SHOW APPLIED BADGE BUTTON
+  if (hasApplied) {
+    return (
+      <button
+        disabled
+        className="w-full bg-emerald-50 border border-emerald-200 text-emerald-600 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-sm cursor-not-allowed"
+      >
+        <CheckCircle2 size={16} /> Already Applied
+      </button>
+    );
+  }
+
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-full bg-black hover:bg-gray-900 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-md active:scale-[0.98]"
+        className="w-full bg-black hover:bg-gray-900 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-md active:scale-[0.98] cursor-pointer"
       >
         Apply for loop
       </button>
@@ -528,13 +598,13 @@ function ApplyButton({ job }: { job: any }) {
               </button>
             </div>
 
-            {/* Central Scrolling */}
+            {/* Central Scrolling Body */}
             <div
               ref={scrollContainerRef}
-              className="flex-1 overflow-y-auto px-6 sm:px-8 pb-4"
+              className="flex-1 overflow-y-auto px-6 sm:px-8 pb-4 space-y-6"
             >
               <div
-                className="mb-6 bg-slate-50 p-4 border border-slate-200/60 rounded-xl space-y-4"
+                className="bg-slate-50 p-4 border border-slate-200/60 rounded-xl space-y-4"
                 onClick={(e) => {
                   e.stopPropagation();
                   setDropdownOpen(false);
@@ -596,7 +666,7 @@ function ApplyButton({ job }: { job: any }) {
                                 setSelectedResumeUrl(resObj.url);
                                 setDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 truncate ${selectedResumeUrl === resObj.url ? "bg-slate-50 font-black text-black" : "text-slate-600"}`}
+                              className={`w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 truncate cursor-pointer ${selectedResumeUrl === resObj.url ? "bg-slate-50 font-black text-black" : "text-slate-600"}`}
                             >
                               <span className="text-[10px] font-mono text-slate-300">
                                 [{idx + 1}]
@@ -620,28 +690,139 @@ function ApplyButton({ job }: { job: any }) {
                 )}
               </div>
 
-              {/* Questions */}
+              {/* Dynamic Screening Questions Section */}
               {job.questions?.length > 0 ? (
                 <div
-                  className="space-y-4 pr-1 mb-2"
+                  className="space-y-5 pr-1"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {job.questions.map((q: string, i: number) => (
-                    <div key={i} className="space-y-1.5">
-                      <p className="text-xs font-black uppercase text-slate-500 tracking-wide">
-                        {q}
-                      </p>
-                      <textarea
-                        rows={3}
-                        value={answers[i] || ""}
-                        placeholder="Type response frameworks guidelines..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-black focus:bg-white focus:ring-1 focus:ring-black transition-all text-slate-700"
-                        onChange={(e) =>
-                          setAnswers({ ...answers, [i]: e.target.value })
-                        }
-                      />
-                    </div>
-                  ))}
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider border-b border-slate-100 pb-2">
+                    Screening Questions
+                  </p>
+                  {job.questions.map((q: any, i: number) => {
+                    const isObj = typeof q === "object";
+                    const title = isObj ? q.title : q;
+                    const type = isObj ? q.type : "text";
+                    const isRequired = isObj ? q.required : true;
+                    const options = isObj && q.options ? q.options : [];
+
+                    return (
+                      <div
+                        key={i}
+                        className="space-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100"
+                      >
+                        <p className="text-xs font-black uppercase text-slate-700 tracking-wide flex items-center justify-between">
+                          <span>
+                            {i + 1}. {title}
+                          </span>
+                          {isRequired && (
+                            <span className="text-red-500 text-[10px] font-black uppercase ml-1">
+                              *Required
+                            </span>
+                          )}
+                        </p>
+
+                        {/* Text Field */}
+                        {type === "text" && (
+                          <textarea
+                            rows={3}
+                            value={answers[i] || ""}
+                            placeholder="Type response guidelines..."
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-black focus:ring-1 focus:ring-black transition-all text-slate-700"
+                            onChange={(e) =>
+                              setAnswers({ ...answers, [i]: e.target.value })
+                            }
+                          />
+                        )}
+
+                        {/* Single Choice Radio */}
+                        {type === "radio" && (
+                          <div className="space-y-2 pt-1">
+                            {options.map((opt: string, optIdx: number) => (
+                              <label
+                                key={optIdx}
+                                className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200/80 cursor-pointer hover:border-black transition-colors"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`q_${i}`}
+                                  value={opt}
+                                  checked={answers[i] === opt}
+                                  onChange={(e) =>
+                                    setAnswers({
+                                      ...answers,
+                                      [i]: e.target.value,
+                                    })
+                                  }
+                                  className="accent-black w-4 h-4"
+                                />
+                                <span className="text-xs font-bold text-slate-700 uppercase">
+                                  {opt}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Multiple Choice Checkbox */}
+                        {type === "checkbox" && (
+                          <div className="space-y-2 pt-1">
+                            {options.map((opt: string, optIdx: number) => {
+                              const currentSelected: string[] = Array.isArray(
+                                answers[i],
+                              )
+                                ? answers[i]
+                                : [];
+                              const isChecked = currentSelected.includes(opt);
+
+                              return (
+                                <label
+                                  key={optIdx}
+                                  className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200/80 cursor-pointer hover:border-black transition-colors"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    value={opt}
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const updated = e.target.checked
+                                        ? [...currentSelected, opt]
+                                        : currentSelected.filter(
+                                            (item) => item !== opt,
+                                          );
+                                      setAnswers({ ...answers, [i]: updated });
+                                    }}
+                                    className="accent-black w-4 h-4 rounded"
+                                  />
+                                  <span className="text-xs font-bold text-slate-700 uppercase">
+                                    {opt}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Dropdown Select */}
+                        {type === "dropdown" && (
+                          <select
+                            value={answers[i] || ""}
+                            onChange={(e) =>
+                              setAnswers({ ...answers, [i]: e.target.value })
+                            }
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold uppercase text-slate-700 outline-none focus:border-black cursor-pointer"
+                          >
+                            <option value="">Select option...</option>
+                            {options.map((opt: string, optIdx: number) => (
+                              <option key={optIdx} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-wide py-2 italic">

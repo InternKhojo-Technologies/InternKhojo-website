@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import {
@@ -21,8 +21,25 @@ import {
   CreditCard,
   AlertCircle,
   CheckCircle,
+  Bold,
+  Italic,
+  Underline as UnderlineIcon,
+  List,
+  ListOrdered,
+  Heading1,
+  Heading2,
+  Heading3,
+  Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+interface QuestionItem {
+  id: string;
+  type: "text" | "radio" | "checkbox" | "dropdown";
+  title: string;
+  options: string[];
+  required: boolean;
+}
 
 export default function CreateJobPage() {
   const router = useRouter();
@@ -30,7 +47,7 @@ export default function CreateJobPage() {
 
   // Core Form States
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [descriptionHtml, setDescriptionHtml] = useState("");
   const [isPaid, setIsPaid] = useState(true);
   const [currency, setCurrency] = useState("INR");
   const [stipend, setStipend] = useState("");
@@ -38,37 +55,50 @@ export default function CreateJobPage() {
   const [workType, setWorkType] = useState("internship");
   const [duration, setDuration] = useState("3-6 Months");
   const [experienceLevel, setExperienceLevel] = useState("fresher");
+  const [deadline, setDeadline] = useState("");
+
+  // Rich Text ContentEditable Ref & Active Toolbar State
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [activeFormats, setActiveFormats] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   // Skill & Question Matrices
   const [skillInput, setSkillInput] = useState("");
   const [skillsList, setSkillsList] = useState<string[]>([]);
-  const [questions, setQuestions] = useState<string[]>([""]);
+  const [questions, setQuestions] = useState<QuestionItem[]>([
+    {
+      id: "q_1",
+      type: "text",
+      title: "",
+      options: [""],
+      required: false,
+    },
+  ]);
   const [attachment, setAttachment] = useState<File | null>(null);
 
   // Identity Profiles
   const [companyProfile, setCompanyProfile] = useState<any>(null);
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
-  // 🔥 CUSTOM BUILT-IN TOAST STATES (NO EXTERNAL PACKAGES)
+  // CUSTOM TOAST STATES
   const [customToast, setCustomToast] = useState<{
     show: boolean;
     message: string;
     type: "success" | "error";
   }>({ show: false, message: "", type: "success" });
 
-  // 🔥 CORE CONFIRMATION DIALOG GUARD OVERLAY STATE
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     securityCheck();
   }, []);
 
-  // Internal Floating Alert Action Dispatcher
   const triggerCustomToast = (message: string, type: "success" | "error") => {
     setCustomToast({ show: true, message, type });
     setTimeout(() => {
       setCustomToast((prev) => ({ ...prev, show: false }));
-    }, 4000); // 4 Seconds absolute visual baseline duration
+    }, 4000);
   };
 
   const securityCheck = async () => {
@@ -103,6 +133,100 @@ export default function CreateJobPage() {
     }
   };
 
+  // --- NATIVE RICH TEXT COMMAND EXECUTION ---
+  const formatText = (
+    command: string,
+    value: string | undefined = undefined,
+  ) => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      setDescriptionHtml(editorRef.current.innerHTML);
+      checkActiveFormats();
+    }
+  };
+
+  const checkActiveFormats = () => {
+    setActiveFormats({
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      underline: document.queryCommandState("underline"),
+      insertUnorderedList: document.queryCommandState("insertUnorderedList"),
+      insertOrderedList: document.queryCommandState("insertOrderedList"),
+    });
+  };
+
+  const handleEditorInput = () => {
+    if (editorRef.current) {
+      setDescriptionHtml(editorRef.current.innerHTML);
+      checkActiveFormats();
+    }
+  };
+
+  // --- QUESTION BUILDER HELPERS ---
+  const addQuestion = () => {
+    setQuestions([
+      ...questions,
+      {
+        id: `q_${Date.now()}`,
+        type: "text",
+        title: "",
+        options: [""],
+        required: false,
+      },
+    ]);
+  };
+
+  const updateQuestion = (id: string, key: keyof QuestionItem, value: any) => {
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, [key]: value } : q)),
+    );
+  };
+
+  const addQuestionOption = (questionId: string) => {
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === questionId ? { ...q, options: [...q.options, ""] } : q,
+      ),
+    );
+  };
+
+  const updateQuestionOption = (
+    questionId: string,
+    optIdx: number,
+    value: string,
+  ) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id === questionId) {
+          const updated = [...q.options];
+          updated[optIdx] = value;
+          return { ...q, options: updated };
+        }
+        return q;
+      }),
+    );
+  };
+
+  const removeQuestionOption = (questionId: string, optIdx: number) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id === questionId && q.options.length > 1) {
+          return {
+            ...q,
+            options: q.options.filter((_, idx) => idx !== optIdx),
+          };
+        }
+        return q;
+      }),
+    );
+  };
+
+  const removeQuestion = (id: string) => {
+    if (questions.length > 1) {
+      setQuestions(questions.filter((q) => q.id !== id));
+    }
+  };
+
   const addSkill = () => {
     if (
       skillInput.trim() &&
@@ -119,11 +243,23 @@ export default function CreateJobPage() {
 
   const resetForm = () => {
     setTitle("");
-    setDescription("");
+    if (editorRef.current) {
+      editorRef.current.innerHTML = "";
+    }
+    setDescriptionHtml("");
     setStipend("");
     setLocation("");
+    setDeadline("");
     setSkillsList([]);
-    setQuestions([""]);
+    setQuestions([
+      {
+        id: "q_1",
+        type: "text",
+        title: "",
+        options: [""],
+        required: false,
+      },
+    ]);
     setAttachment(null);
     setIsPaid(true);
     setSkillInput("");
@@ -138,22 +274,20 @@ export default function CreateJobPage() {
     }
   };
 
-  // 🔥 INTERFACE SUBMIT VALIDATOR TRIGGER
   const handleCreateIntent = () => {
-    if (!title || !description || (isPaid && !stipend)) {
+    const cleanText = descriptionHtml.replace(/<[^>]*>/g, "").trim();
+    if (!title || !cleanText || (isPaid && !stipend)) {
       triggerCustomToast(
         "Please fill out all necessary structural details.",
         "error",
       );
       return;
     }
-    // Form is perfectly valid, show confirmation screen guard overlay
     setShowConfirmModal(true);
   };
 
-  // 🔥 FINAL VERIFIED COMMITTED ACTION FLOW
   const executeDeploymentPipeline = async () => {
-    setShowConfirmModal(false); // Close guard dashboard interface modal
+    setShowConfirmModal(false);
     setLoading(true);
 
     try {
@@ -176,22 +310,37 @@ export default function CreateJobPage() {
         ? `${currency === "INR" ? "₹" : currency === "USD" ? "$" : "€"}${stipend}`
         : "Unpaid";
 
+      const formattedQuestions = questions
+        .filter((q) => q.title.trim() !== "")
+        .map((q) => ({
+          id: q.id,
+          title: q.title,
+          type: q.type,
+          required: q.required,
+          options:
+            q.type !== "text"
+              ? q.options.filter((opt) => opt.trim() !== "")
+              : [],
+        }));
+
       const { data: newJob, error: insertError } = await supabase
         .from("jobs")
         .insert({
           title,
-          description,
+          description: descriptionHtml,
           job_mode: "company",
           created_by: user.id,
           recruiter_id: user.id,
           company_id: companyProfile.id,
+          paid: isPaid,
           stipend: stipendValue,
           location,
           job_type: workType,
           duration: workType === "internship" ? duration : "Full-Time",
           experience_level: experienceLevel,
+          deadline: deadline ? new Date(deadline).toISOString() : null,
           skills: skillsList,
-          questions: questions.filter((q) => q.trim() !== ""),
+          questions: formattedQuestions,
           attachment_url: docUrl,
           status: "open",
         })
@@ -199,61 +348,6 @@ export default function CreateJobPage() {
         .single();
 
       if (insertError) throw insertError;
-
-      // Filtered Segment Broadcast Engine Trigger Track
-      if (newJob) {
-        try {
-          const { data: candidates } = await supabase
-            .from("profiles")
-            .select("email, skills")
-            .eq("role", "candidate");
-
-          if (candidates && candidates.length > 0) {
-            const jobSkillsSet = new Set(
-              (newJob.skills || []).map((s: string) => s.trim().toUpperCase()),
-            );
-
-            const matchedEmails: string[] = [];
-
-            candidates.forEach((candidate) => {
-              if (!candidate.email) return;
-
-              if (jobSkillsSet.size === 0) {
-                matchedEmails.push(candidate.email);
-                return;
-              }
-
-              const candidateSkills = Array.isArray(candidate.skills)
-                ? candidate.skills
-                : [];
-              const hasMatchingSkill = candidateSkills.some((skill: string) =>
-                jobSkillsSet.has(skill.trim().toUpperCase()),
-              );
-
-              if (hasMatchingSkill) {
-                matchedEmails.push(candidate.email);
-              }
-            });
-
-            if (matchedEmails.length > 0) {
-              await fetch("/api/send-job-broadcast", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  jobTitle: newJob.title,
-                  companyName: companyProfile?.name || "Ecosystem Partner",
-                  skills: newJob.skills,
-                  location: newJob.location,
-                  stipend: newJob.stipend,
-                  candidateEmails: matchedEmails,
-                }),
-              });
-            }
-          }
-        } catch (broadcastErr) {
-          console.error("Broadcast transmission loop error:", broadcastErr);
-        }
-      }
 
       triggerCustomToast(
         "Job created successfully! Pipeline broadcast active.",
@@ -281,9 +375,11 @@ export default function CreateJobPage() {
       </div>
     );
 
+  const isCompanyVerified = companyProfile?.verified === true;
+
   return (
     <div className="bg-[#FBFCFD] min-h-screen text-[#111] font-sans selection:bg-black selection:text-white pb-20 relative overflow-x-hidden">
-      {/* 🔥 1. CUSTOM SYSTEM BANNER ALERTS TOAST VIEWPORT */}
+      {/* CUSTOM TOAST */}
       <AnimatePresence>
         {customToast.show && (
           <motion.div
@@ -307,7 +403,7 @@ export default function CreateJobPage() {
         )}
       </AnimatePresence>
 
-      {/* 🔥 2. DYNAMIC SYSTEM CONFIRMATION OVERLAY DIALOG */}
+      {/* CONFIRMATION OVERLAY */}
       <AnimatePresence>
         {showConfirmModal && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
@@ -348,7 +444,7 @@ export default function CreateJobPage() {
         )}
       </AnimatePresence>
 
-      {/* --- TOP BAR --- */}
+      {/* TOP BAR */}
       <nav className="max-w-[1300px] mx-auto px-8 py-8 flex justify-between items-center">
         <div className="flex items-center gap-8">
           <button
@@ -363,7 +459,6 @@ export default function CreateJobPage() {
           </span>
         </div>
 
-        {/* --- IDENTITY BADGE --- */}
         <div className="flex items-center gap-5 bg-white pl-8 pr-3 py-3 rounded-full border border-gray-100 shadow-sm transition-all hover:shadow-md">
           <div className="text-right leading-none">
             <p className="text-[15px] font-black tracking-tighter mb-1.5 text-black">
@@ -371,12 +466,20 @@ export default function CreateJobPage() {
             </p>
             <div className="flex items-center justify-end gap-2">
               <span
-                className={`text-[9px] font-black uppercase tracking-[0.15em] ${companyProfile ? "text-emerald-500" : "text-rose-500"}`}
+                className={`text-[9px] font-black uppercase tracking-[0.15em] ${
+                  isCompanyVerified ? "text-emerald-500" : "text-amber-500"
+                }`}
               >
-                {companyProfile ? "Verified Recruiter" : "Awaiting Auth"}
+                {isCompanyVerified
+                  ? "Verified Recruiter"
+                  : "Not a Verified Recruiter"}
               </span>
               <div
-                className={`w-1.5 h-1.5 rounded-full ${companyProfile ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "bg-rose-500"}`}
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isCompanyVerified
+                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                    : "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"
+                }`}
               />
             </div>
           </div>
@@ -425,18 +528,132 @@ export default function CreateJobPage() {
               />
             </div>
 
-            {/* MISSION BRIEF */}
+            {/* MISSION BRIEF RICH TEXT EDITOR */}
             <div className="space-y-3">
               <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">
-                <Database size={14} className="text-black" /> Mission Brief{" "}
+                <Database size={14} className="text-black" /> Mission Brief (JD){" "}
                 <span className="text-[#FF3B30] text-sm">*</span>
               </label>
-              <textarea
-                placeholder="Describe the role requirements..."
-                className="w-full h-56 bg-[#F8F9FA] px-6 py-6 rounded-[1.5rem] text-sm font-medium leading-relaxed placeholder:text-gray-300 outline-none focus:ring-2 focus:ring-black/5 transition-all resize-none"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+
+              {/* TOOLBAR */}
+              <div className="flex flex-wrap gap-1 bg-[#F8F9FA] p-2 rounded-t-2xl border border-gray-100 border-b-0">
+                <button
+                  type="button"
+                  onClick={() => formatText("bold")}
+                  className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                    activeFormats.bold
+                      ? "bg-black text-white"
+                      : "hover:bg-white text-gray-600"
+                  }`}
+                  title="Bold"
+                >
+                  <Bold size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText("italic")}
+                  className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                    activeFormats.italic
+                      ? "bg-black text-white"
+                      : "hover:bg-white text-gray-600"
+                  }`}
+                  title="Italic"
+                >
+                  <Italic size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText("underline")}
+                  className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                    activeFormats.underline
+                      ? "bg-black text-white"
+                      : "hover:bg-white text-gray-600"
+                  }`}
+                  title="Underline"
+                >
+                  <UnderlineIcon size={15} />
+                </button>
+
+                <div className="w-[1px] h-5 bg-gray-300 mx-1 self-center" />
+
+                <button
+                  type="button"
+                  onClick={() => formatText("formatBlock", "<h1>")}
+                  className="p-2 hover:bg-white rounded-lg text-gray-600 hover:text-black transition-colors cursor-pointer"
+                  title="Heading 1"
+                >
+                  <Heading1 size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText("formatBlock", "<h2>")}
+                  className="p-2 hover:bg-white rounded-lg text-gray-600 hover:text-black transition-colors cursor-pointer"
+                  title="Heading 2"
+                >
+                  <Heading2 size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText("formatBlock", "<h3>")}
+                  className="p-2 hover:bg-white rounded-lg text-gray-600 hover:text-black transition-colors cursor-pointer"
+                  title="Heading 3"
+                >
+                  <Heading3 size={15} />
+                </button>
+
+                <div className="w-[1px] h-5 bg-gray-300 mx-1 self-center" />
+
+                <button
+                  type="button"
+                  onClick={() => formatText("insertUnorderedList")}
+                  className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                    activeFormats.insertUnorderedList
+                      ? "bg-black text-white"
+                      : "hover:bg-white text-gray-600"
+                  }`}
+                  title="Bullet List"
+                >
+                  <List size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => formatText("insertOrderedList")}
+                  className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                    activeFormats.insertOrderedList
+                      ? "bg-black text-white"
+                      : "hover:bg-white text-gray-600"
+                  }`}
+                  title="Numbered List"
+                >
+                  <ListOrdered size={15} />
+                </button>
+              </div>
+
+              {/* EDITOR DIV WITH WATERMARK PLACEHOLDER & VISUAL STYLING RULES */}
+              <div className="relative border border-gray-100 rounded-b-[1.5rem] bg-[#F8F9FA] overflow-hidden">
+                {!descriptionHtml && (
+                  <div className="absolute top-4 left-4 text-sm font-medium text-gray-400 pointer-events-none select-none">
+                    Write out job description, responsibilities, and
+                    qualifications...
+                  </div>
+                )}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleEditorInput}
+                  onKeyUp={checkActiveFormats}
+                  onMouseUp={checkActiveFormats}
+                  className="min-h-[220px] p-4 text-sm font-medium leading-relaxed text-gray-800 outline-none
+                    [&_h1]:text-2xl [&_h1]:font-black [&_h1]:my-3 [&_h1]:text-black 
+                    [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_h2]:text-black 
+                    [&_h3]:text-lg [&_h3]:font-bold [&_h3]:my-2 [&_h3]:text-black 
+                    [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 
+                    [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 
+                    [&_li]:my-1 
+                    [&_b]:font-black [&_strong]:font-black 
+                    [&_u]:underline"
+                />
+              </div>
             </div>
 
             {/* TECH STACK */}
@@ -489,46 +706,114 @@ export default function CreateJobPage() {
               <div className="flex justify-between items-center px-1">
                 <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
                   <ShieldCheck size={14} className="text-black" /> Screening
-                  Matrix
+                  Matrix Questions
                 </label>
                 <button
                   type="button"
-                  onClick={() => setQuestions([...questions, ""])}
+                  onClick={addQuestion}
                   className="text-[9px] font-black uppercase bg-black text-white px-4 py-2 rounded-xl hover:bg-[#FF3B30] transition-all shadow-md cursor-pointer"
                 >
-                  + Add Query
+                  + Add Question
                 </button>
               </div>
-              <div className="grid grid-cols-1 gap-3">
+
+              <div className="space-y-4">
                 {questions.map((q, i) => (
                   <div
-                    key={i}
-                    className="flex items-center gap-4 bg-white border border-gray-100 p-4 rounded-2xl group transition-all hover:border-gray-300 shadow-sm"
+                    key={q.id}
+                    className="bg-white border border-gray-200 p-6 rounded-2xl space-y-4 shadow-sm"
                   >
-                    <span className="text-[10px] font-black text-gray-200">
-                      0{i + 1}
-                    </span>
-                    <input
-                      placeholder="Input custom question..."
-                      className="flex-1 bg-transparent outline-none text-xs font-bold uppercase"
-                      value={q}
-                      onChange={(e) => {
-                        const updated = [...questions];
-                        updated[i] = e.target.value;
-                        setQuestions(updated);
-                      }}
-                    />
-                    {questions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setQuestions(questions.filter((_, idx) => idx !== i))
+                    <div className="flex gap-4 items-center">
+                      <span className="text-xs font-black text-gray-300">
+                        0{i + 1}
+                      </span>
+                      <input
+                        placeholder="Question Title (e.g. Years of React experience)..."
+                        value={q.title}
+                        onChange={(e) =>
+                          updateQuestion(q.id, "title", e.target.value)
                         }
-                        className="text-gray-300 hover:text-rose-500 transition-colors cursor-pointer"
+                        className="flex-1 bg-gray-50 border border-gray-100 p-3 rounded-xl text-xs font-bold uppercase outline-none focus:border-black"
+                      />
+                      <select
+                        value={q.type}
+                        onChange={(e) =>
+                          updateQuestion(q.id, "type", e.target.value)
+                        }
+                        className="bg-gray-50 border border-gray-100 p-3 rounded-xl text-[10px] font-black uppercase outline-none cursor-pointer"
                       >
-                        <Trash2 size={16} />
-                      </button>
+                        <option value="text">Fill in Text</option>
+                        <option value="radio">Single Choice</option>
+                        <option value="checkbox">Multiple Choice</option>
+                        <option value="dropdown">Dropdown Choice</option>
+                      </select>
+                      {questions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeQuestion(q.id)}
+                          className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    {q.type !== "text" && (
+                      <div className="pl-8 space-y-2 border-l-2 border-gray-100">
+                        <p className="text-[9px] font-black uppercase text-gray-400">
+                          Options Matrix
+                        </p>
+                        {q.options.map((opt, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-gray-300" />
+                            <input
+                              placeholder={`Option ${optIdx + 1}`}
+                              value={opt}
+                              onChange={(e) =>
+                                updateQuestionOption(
+                                  q.id,
+                                  optIdx,
+                                  e.target.value,
+                                )
+                              }
+                              className="flex-1 bg-gray-50 border border-gray-100 p-2 rounded-lg text-xs font-medium outline-none"
+                            />
+                            {q.options.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeQuestionOption(q.id, optIdx)
+                                }
+                                className="text-gray-300 hover:text-red-500"
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => addQuestionOption(q.id)}
+                          className="text-[9px] font-black uppercase text-black hover:text-[#FF3B30] pt-1"
+                        >
+                          + Add Option Choice
+                        </button>
+                      </div>
                     )}
+
+                    <div className="flex justify-end items-center gap-2 pt-2 border-t border-gray-50">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase">
+                        Mandatory Field
+                      </label>
+                      <input
+                        type="checkbox"
+                        checked={q.required}
+                        onChange={(e) =>
+                          updateQuestion(q.id, "required", e.target.checked)
+                        }
+                        className="w-4 h-4 accent-black cursor-pointer"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -555,21 +840,33 @@ export default function CreateJobPage() {
                     <button
                       type="button"
                       onClick={() => setIsPaid(true)}
-                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${isPaid ? "bg-black text-white shadow-sm" : "text-gray-400"}`}
+                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${
+                        isPaid
+                          ? "bg-black text-white shadow-sm"
+                          : "text-gray-400"
+                      }`}
                     >
                       Paid
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsPaid(false)}
-                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${!isPaid ? "bg-black text-white shadow-sm" : "text-gray-400"}`}
+                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${
+                        !isPaid
+                          ? "bg-black text-white shadow-sm"
+                          : "text-gray-400"
+                      }`}
                     >
                       Unpaid
                     </button>
                   </div>
                 </div>
                 <div
-                  className={`flex bg-gray-50 rounded-2xl overflow-hidden border border-transparent transition-all ${!isPaid ? "opacity-30 pointer-events-none" : "focus-within:border-gray-200"}`}
+                  className={`flex bg-gray-50 rounded-2xl overflow-hidden border border-transparent transition-all ${
+                    !isPaid
+                      ? "opacity-30 pointer-events-none"
+                      : "focus-within:border-gray-200"
+                  }`}
                 >
                   <div className="relative border-r border-gray-200">
                     <select
@@ -624,7 +921,9 @@ export default function CreateJobPage() {
                     disabled={workType !== "internship"}
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    className={`w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer ${workType !== "internship" && "opacity-20"}`}
+                    className={`w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer ${
+                      workType !== "internship" && "opacity-20"
+                    }`}
                   >
                     <option value="1 Month">1 Mo</option>
                     <option value="3 Months">3 Mo</option>
@@ -668,7 +967,20 @@ export default function CreateJobPage() {
                 </div>
               </div>
 
-              {/* DOSSIER */}
+              {/* APPLICATION DEADLINE PICKER */}
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-1.5">
+                  <Calendar size={12} /> Application Deadline
+                </label>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-bold uppercase outline-none focus:border-black cursor-pointer"
+                />
+              </div>
+
+              {/* DOSSIER BRIEF */}
               <div className="space-y-3">
                 <label className="flex flex-col items-center justify-center w-full h-32 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 cursor-pointer hover:border-black hover:bg-white transition-all group">
                   {!attachment ? (
@@ -709,7 +1021,7 @@ export default function CreateJobPage() {
 
             <div className="pt-4">
               <button
-                onClick={handleCreateIntent} // 🔥 Calls pre-validator with Dialog block guard
+                onClick={handleCreateIntent}
                 disabled={loading || !companyProfile}
                 className="w-full bg-black text-white py-6 rounded-[1.8rem] flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.2em] hover:bg-[#FF3B30] transition-all shadow-xl shadow-gray-200 active:scale-95 disabled:bg-gray-200 disabled:shadow-none cursor-pointer"
               >
