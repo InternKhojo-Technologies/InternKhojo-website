@@ -1,8 +1,10 @@
+// mentor page code of waitlist jisme when click cross it shows bg UI
+
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Users,
@@ -20,26 +22,19 @@ import {
 } from "lucide-react";
 
 export default function MentorStagingPage() {
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sessionUser, setSessionUser] = useState<any>(null);
 
-  // Waitlist Modal States (Forced Open)
-  const [notifyModalOpen, setNotifyModalOpen] = useState(true);
+  // Waitlist Modal States
+  const [notifyModalOpen, setNotifyModalOpen] = useState(true); // Default open on load for popup feel
   const [emailInput, setEmailInput] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"candidate" | "mentor">(
-    "candidate",
-  );
+  const [selectedRole, setSelectedRole] = useState<"candidate" | "mentor">("candidate");
   const [submittingEmail, setSubmittingEmail] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
 
   // Toast Alert State
-  const [toast, setToast] = useState<{
-    show: boolean;
-    msg: string;
-    type: "success" | "error";
-  }>({
+  const [toast, setToast] = useState<{ show: boolean; msg: string; type: "success" | "error" }>({
     show: false,
     msg: "",
     type: "success",
@@ -57,9 +52,7 @@ export default function MentorStagingPage() {
 
   const evaluateUser = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setSessionUser(user);
         setEmailInput(user.email || "");
@@ -72,11 +65,6 @@ export default function MentorStagingPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // REDIRECT TO HOME ON CANCEL/CROSS CLICK
-  const handleExitToHome = () => {
-    router.push("/");
   };
 
   const handleNotifySubmit = async (e: React.FormEvent) => {
@@ -177,9 +165,7 @@ export default function MentorStagingPage() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border ${
-              toast.type === "error"
-                ? "bg-red-950 text-red-200 border-red-800"
-                : "bg-neutral-950 text-neutral-100 border-neutral-800"
+              toast.type === "error" ? "bg-red-950 text-red-200 border-red-800" : "bg-neutral-950 text-neutral-100 border-neutral-800"
             }`}
           >
             <Sparkles size={16} className="text-[#FF3B30]" />
@@ -188,24 +174,23 @@ export default function MentorStagingPage() {
         )}
       </AnimatePresence>
 
-      {/* 🔥 POPUP WINDOW WITH REDIRECT ON EXIT */}
+      {/* 🔥 POPUP WINDOW WITH FULL BG BLUR */}
       <AnimatePresence>
         {notifyModalOpen && (
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-[150] flex items-center justify-center p-4 cursor-pointer"
-            onClick={handleExitToHome}
+            className="fixed inset-0 bg-black/70 backdrop-blur-xl z-[150] flex items-center justify-center p-4"
+            onClick={() => setNotifyModalOpen(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[2.5rem] border border-neutral-200/80 p-8 sm:p-10 max-w-md w-full shadow-[0_32px_80px_rgba(0,0,0,0.35)] relative space-y-6 cursor-default"
+              className="bg-white rounded-[2.5rem] border border-neutral-200/80 p-8 sm:p-10 max-w-md w-full shadow-[0_32px_80px_rgba(0,0,0,0.25)] relative space-y-6"
             >
               <button
-                onClick={handleExitToHome}
+                onClick={() => setNotifyModalOpen(false)}
                 className="absolute top-6 right-6 text-neutral-400 hover:text-black transition-colors p-2 rounded-full hover:bg-neutral-100 cursor-pointer"
-                title="Return to Home"
               >
                 <X size={18} />
               </button>
@@ -223,21 +208,15 @@ export default function MentorStagingPage() {
                   Join Mentor Network Waitlist
                 </h3>
                 <p className="text-xs text-neutral-500 font-medium leading-relaxed">
-                  We are actively onboarding tech leads, product managers, and
-                  quant veterans. Reserve your spot early.
+                  We are actively onboarding tech leads, product managers, and quant veterans. Reserve your spot early.
                 </p>
               </div>
 
               {alreadyApplied ? (
                 <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl flex items-center gap-3 text-emerald-800">
-                  <CheckCircle2
-                    size={20}
-                    className="text-emerald-600 flex-shrink-0"
-                  />
+                  <CheckCircle2 size={20} className="text-emerald-600 flex-shrink-0" />
                   <div>
-                    <p className="text-xs font-black uppercase tracking-wide">
-                      Already Registered
-                    </p>
+                    <p className="text-xs font-black uppercase tracking-wide">Already Registered</p>
                     <p className="text-[11px] font-medium text-emerald-600 mt-0.5">
                       Your email is queued on our mentor priority pass list.
                     </p>
@@ -268,12 +247,8 @@ export default function MentorStagingPage() {
                       onChange={(e: any) => setSelectedRole(e.target.value)}
                       className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3.5 text-xs font-bold outline-none focus:border-black cursor-pointer"
                     >
-                      <option value="candidate">
-                        I want Mentorship (Mentee / Student)
-                      </option>
-                      <option value="mentor">
-                        I want to become a Mentor (Expert / Leader)
-                      </option>
+                      <option value="candidate">I want Mentorship (Mentee / Student)</option>
+                      <option value="mentor">I want to become a Mentor (Expert / Leader)</option>
                     </select>
                   </div>
 
@@ -282,9 +257,7 @@ export default function MentorStagingPage() {
                     disabled={submittingEmail}
                     className="w-full bg-black text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-neutral-800 transition-colors shadow-lg cursor-pointer flex items-center justify-center gap-2 mt-2"
                   >
-                    {submittingEmail
-                      ? "Registering..."
-                      : "Join Priority Roster"}
+                    {submittingEmail ? "Registering..." : "Join Priority Roster"}
                     <ArrowRight size={14} />
                   </button>
                 </form>
@@ -294,7 +267,7 @@ export default function MentorStagingPage() {
         )}
       </AnimatePresence>
 
-      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 pt-12 sm:pt-20 space-y-12 sm:space-y-16 relative z-10 pointer-events-none select-none blur-sm">
+      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 pt-12 sm:pt-20 space-y-12 sm:space-y-16 relative z-10">
         {/* HERO BANNER SECTION */}
         <div className="relative rounded-[2.5rem] bg-gradient-to-br from-neutral-950 via-neutral-900 to-black p-8 sm:p-14 text-white overflow-hidden shadow-2xl border border-neutral-800">
           <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-600/10 rounded-full blur-[100px] pointer-events-none" />
@@ -310,18 +283,15 @@ export default function MentorStagingPage() {
             </h1>
 
             <p className="text-neutral-400 text-xs sm:text-sm leading-relaxed font-medium">
-              Connect 1-on-1 with industry veterans from premium institutions
-              and companies. Get direct resume breakdowns, mock interview
-              simulations, and specialized tech guidance.
+              Connect 1-on-1 with industry veterans from premium institutions and companies. Get direct resume breakdowns, mock interview simulations, and specialized tech guidance.
             </p>
 
             <div className="pt-2 flex flex-wrap gap-4 items-center">
-              <button className="bg-white text-black px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2">
-                {alreadyApplied ? (
-                  <UserCheck size={14} className="text-emerald-600" />
-                ) : (
-                  <Users size={14} />
-                )}
+              <button
+                onClick={() => setNotifyModalOpen(true)}
+                className="bg-white text-black hover:bg-neutral-100 px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all shadow-xl hover:scale-[1.02] cursor-pointer"
+              >
+                {alreadyApplied ? <UserCheck size={14} className="text-emerald-600" /> : <Users size={14} />}
                 {alreadyApplied ? "Already Registered" : "Join Mentor Waitlist"}
               </button>
             </div>
@@ -332,8 +302,7 @@ export default function MentorStagingPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between border-b border-neutral-200/60 pb-4">
             <h2 className="text-lg font-black tracking-tight text-neutral-950 uppercase flex items-center gap-2">
-              <Users size={18} className="text-emerald-600" /> Featured
-              Ecosystem Leaders
+              <Users size={18} className="text-emerald-600" /> Featured Ecosystem Leaders
             </h2>
           </div>
 
@@ -341,7 +310,7 @@ export default function MentorStagingPage() {
             {placeholderMentors.map((mentor, i) => (
               <div
                 key={i}
-                className="bg-white border border-neutral-200/80 rounded-3xl p-6 flex flex-col justify-between relative shadow-sm"
+                className="bg-white border border-neutral-200/80 rounded-3xl p-6 flex flex-col justify-between min-h-[220px] transition-all duration-150 relative shadow-sm"
               >
                 <div className="space-y-4">
                   <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 bg-neutral-50 px-2.5 py-1 rounded-lg border border-neutral-100 w-fit">
