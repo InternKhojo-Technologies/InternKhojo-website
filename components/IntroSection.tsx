@@ -1,17 +1,96 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Container from "./ui/Container";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+
+// 🔥 MANUAL OVERRIDE CONFIG
+// Set 'enabled' to true ONLY if you want to explicitly override database counts.
+const MANUAL_OVERRIDE = {
+  enabled: false,
+  badgeText: "500+ startups joined this month",
+  stats: {
+    students: "1,240+",
+    startups: "85+",
+    skills: "50+",
+    remoteTitle: "Remote",
+    remoteSubtitle: "Hybrid Friendly",
+  },
+};
 
 export default function IntroSection() {
   const router = useRouter();
 
+  const [loading, setLoading] = useState(!MANUAL_OVERRIDE.enabled);
+  const [stats, setStats] = useState({
+    students: "",
+    startups: "",
+    skills: "",
+    remoteTitle: "Remote",
+    remoteSubtitle: "Hybrid Friendly",
+  });
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    // 1. If Override is enabled, set manual numbers instantly without skeleton loading
+    if (MANUAL_OVERRIDE.enabled) {
+      setStats(MANUAL_OVERRIDE.stats);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Fetch Real Database Counts
+    try {
+      setLoading(true);
+
+      // Fetch Students / Candidate Count
+      const { count: candidateCount } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "candidate");
+
+      // Fetch Companies / Startups Count
+      const { count: companyCount } = await supabase
+        .from("companies")
+        .select("*", { count: "exact", head: true });
+
+      // Fetch Jobs to calculate unique skillsets
+      const { data: jobsData } = await supabase.from("jobs").select("skills");
+
+      let uniqueSkillsCount = 0;
+      if (jobsData) {
+        const skillsSet = new Set<string>();
+        jobsData.forEach((job) => {
+          if (Array.isArray(job.skills)) {
+            job.skills.forEach((s: string) =>
+              skillsSet.add(s.trim().toUpperCase()),
+            );
+          }
+        });
+        uniqueSkillsCount = skillsSet.size;
+      }
+
+      setStats({
+        students: `${(candidateCount || 0).toLocaleString()}+`,
+        startups: `${(companyCount || 0).toLocaleString()}+`,
+        skills: `${uniqueSkillsCount || 0}+`,
+        remoteTitle: "Remote",
+        remoteSubtitle: "Hybrid Friendly",
+      });
+    } catch (error) {
+      console.error("Error loading IntroSection stats:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section className="relative overflow-hidden bg-transparent py-28 sm:py-36 -mt-32">
-      {/* PREMIUM RED GLOW
-      <div className="absolute top-[-250px] left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-red-500/5 blur-[180px] rounded-full" /> */}
-
       {/* GRID BACKGROUND */}
       <div
         className="
@@ -49,7 +128,14 @@ export default function IntroSection() {
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
 
             <span className="text-sm font-semibold text-gray-600">
-              500+ startups joined this month
+              {MANUAL_OVERRIDE.enabled ? (
+                MANUAL_OVERRIDE.badgeText
+              ) : loading ? (
+                <span className="inline-block w-32 h-4 bg-gray-200 rounded animate-pulse align-middle" />
+              ) : (
+                //  `${stats.startups} startups hiring on platform`
+                `Top startups actively hiring talent today.`
+              )}
             </span>
           </motion.div>
 
@@ -108,6 +194,7 @@ export default function IntroSection() {
                   font-bold
                   text-lg
                   shadow-[0_15px_50px_rgba(0,0,0,0.18)]
+                  cursor-pointer
                 "
               >
                 <span className="relative z-10">Find Work</span>
@@ -134,6 +221,7 @@ export default function IntroSection() {
                   shadow-[0_10px_40px_rgba(0,0,0,0.05)]
                   hover:bg-white
                   transition-all
+                  cursor-pointer
                 "
               >
                 Hire Talent
@@ -141,7 +229,7 @@ export default function IntroSection() {
             </div>
           </motion.div>
 
-          {/* FLOATING STATS */}
+          {/* DYNAMIC STATS CARDS */}
           <motion.div
             initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
@@ -157,10 +245,10 @@ export default function IntroSection() {
             "
           >
             {[
-              ["10K+", "Students"],
-              ["2K+", "Startups"],
-              ["50+", "Skillsets"],
-              ["Remote", "Hybrid Friendly"],
+              [stats.students, "Students"],
+              [stats.startups, "Startups"],
+              [stats.skills, "Skillsets"],
+              [stats.remoteTitle, stats.remoteSubtitle],
             ].map((item, i) => (
               <motion.div
                 key={i}
@@ -176,7 +264,11 @@ export default function IntroSection() {
                   py-7
                 "
               >
-                <h3 className="text-3xl font-black text-black">{item[0]}</h3>
+                {loading ? (
+                  <div className="h-9 w-24 bg-gray-200 rounded-lg animate-pulse mb-1" />
+                ) : (
+                  <h3 className="text-3xl font-black text-black">{item[0]}</h3>
+                )}
 
                 <p className="mt-2 text-gray-500 font-medium">{item[1]}</p>
               </motion.div>
