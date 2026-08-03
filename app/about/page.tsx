@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   ArrowUpRight,
   Zap,
@@ -31,6 +31,138 @@ const Reveal = ({
     {children}
   </motion.div>
 );
+
+// --- FAQ Data ---
+const faqData = [
+  {
+    question: "What is InternKhojo?",
+    answer:
+      "InternKhojo is a next-generation talent platform that connects ambitious students and early-career professionals with curated internship opportunities across India and beyond. We vet every listing to ensure quality and relevance.",
+  },
+  {
+    question: "How do I apply for an internship?",
+    answer:
+      "Simply create your profile, browse the available openings on our platform, and hit apply. Your application goes directly to the hiring team—no black holes, no ghosting. You'll receive status updates at every stage.",
+  },
+  {
+    question: "Is InternKhojo free for students?",
+    answer:
+      "Yes, InternKhojo is completely free for students and job seekers. We believe access to opportunity should never have a paywall. Our revenue model is built around partnerships with companies, not candidates.",
+  },
+  {
+    question: "How are internships vetted?",
+    answer:
+      "Every internship posted on InternKhojo goes through a manual curation process. We verify company legitimacy, role expectations, stipend transparency, and mentorship quality before any listing goes live.",
+  },
+  {
+    question: "Can companies post internships on InternKhojo?",
+    answer:
+      "Absolutely. Companies and startups can onboard through our employer portal, create detailed role listings, and access our pool of pre-qualified, motivated candidates. We make hiring early talent effortless.",
+  },
+  {
+    question: "What makes InternKhojo different from other job boards?",
+    answer:
+      "We're not a job board—we're a career launchpad. Every role is handpicked, every application gets a response, and we offer direct mentorship from industry leaders. No spam, no noise, just signal.",
+  },
+];
+
+// --- FAQ Accordion Item ---
+const FAQItem = ({
+  question,
+  answer,
+  isOpen,
+  onClick,
+  index,
+}: {
+  question: string;
+  answer: string;
+  isOpen: boolean;
+  onClick: () => void;
+  index: number;
+}) => (
+  <Reveal delay={index * 0.06}>
+    <div
+      className={`rounded-2xl md:rounded-3xl transition-all duration-400 ease-out ${isOpen
+        ? "bg-white shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border border-gray-100"
+        : "bg-[#f4f5f7] hover:bg-[#ecedf0] border border-transparent"
+        }`}
+    >
+      <button
+        onClick={onClick}
+        className="w-full flex items-center justify-between px-6 md:px-8 py-5 md:py-6 text-left cursor-pointer"
+      >
+        <span className={`text-sm md:text-base font-semibold tracking-tight pr-6 transition-colors duration-300 ${isOpen ? "text-[#0a0a0a]" : "text-[#11a1a]"
+          }`}>
+          {question}
+        </span>
+        <motion.span
+          animate={{ rotate: isOpen ? 45 : 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          className={`flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${isOpen
+            ? "bg-red-600 text-white"
+            : "bg-white text-[#0a0a0a] shadow-sm border border-gray-100"
+            }`}
+        >
+          +
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <p className="text-sm md:text-[15px] text-gray-500 font-normal leading-relaxed px-6 md:px-8 pb-6 md:pb-7 max-w-2xl">
+              {answer}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  </Reveal>
+);
+
+// --- FAQ Section ---
+const FAQSection = () => {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  return (
+    <section className="py-24 md:py-40 px-6 sm:px-12 lg:px-20 max-w-[800px] mx-auto">
+      {/* Centered Header */}
+      <div className="text-center mb-12 md:mb-16">
+        <Reveal>
+          <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.35em] text-gray-400 mb-5 md:mb-6">
+            Trusted By
+          </p>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] text-[#0a0a0a]">
+            Frequently{" "}
+            <br className="hidden sm:inline" />
+            Asked Questions
+          </h2>
+        </Reveal>
+      </div>
+
+      {/* Accordion Items */}
+      <div className="flex flex-col gap-3 md:gap-4">
+        {faqData.map((item, idx) => (
+          <FAQItem
+            key={idx}
+            question={item.question}
+            answer={item.answer}
+            isOpen={openIndex === idx}
+            onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
+            index={idx}
+          />
+        ))}
+      </div>
+    </section>
+  );
+};
 
 export default function AboutPage() {
   const { scrollYProgress } = useScroll();
@@ -115,7 +247,7 @@ export default function AboutPage() {
             </div>
           </Reveal>
         </div>
-
+        {/* This is the curation dna velocity wala part */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             {
@@ -251,8 +383,8 @@ export default function AboutPage() {
                 <span className="text-red-600 italic">BHARAT.</span>
               </h2>
               <p className="text-lg md:text-xl text-gray-500 leading-relaxed max-w-md font-medium">
-                Bharat is the world’s talent engine. We aren’t just starting
-                here because it’s home—we’re starting here because this is where
+                Bharat is the world's talent engine. We aren't just starting
+                here because it's home—we're starting here because this is where
                 the most ambitious builders are born.
               </p>
               <div className="flex items-center gap-4 md:gap-6 mt-8 md:mt-12 pt-4 md:pt-6">
@@ -339,7 +471,11 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* 5. CTA SECTION */}
+      {/* 5. FAQ SECTION */}
+      <FAQSection />
+
+
+      {/* 6. CTA SECTION */}
       <section className="pb-24 md:pb-40 pt-12 px-4 sm:px-6 max-w-[1300px] mx-auto">
         <div className="bg-white border border-gray-100 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.1)] md:shadow-[0_60px_150px_-30px_rgba(0,0,0,0.12)] rounded-[40px] md:rounded-[80px] p-8 sm:p-16 md:p-32 text-center relative overflow-hidden">
           <Reveal>
