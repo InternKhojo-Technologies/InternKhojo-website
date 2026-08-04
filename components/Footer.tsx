@@ -140,10 +140,7 @@ export default function Footer() {
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-10 gap-y-4">
               <div className="flex items-center gap-3">
                 <span className="text-[14px] font-black tracking-tight text-gray-500 whitespace-nowrap">
-                  © 2026 InternKhojo LLP
-                </span>
-                <span className="text-[8px] bg-white/[0.05] border border-white/[0.05] px-1.5 py-0.5 rounded font-mono text-gray-600 select-none">
-                  TM
+                  © 2026 Corvian Ventures LLP
                 </span>
               </div>
 
