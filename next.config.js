@@ -3,5 +3,12 @@
 
 // To this:
 module.exports = {
-  /* your config options here */
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
 };
