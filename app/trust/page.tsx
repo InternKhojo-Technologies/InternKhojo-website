@@ -1,43 +1,42 @@
 import React from "react";
 import Link from "next/link";
-import PrivacyClient from "./PrivacyClient";
+import TrustClient from "./TrustClient";
 import {
   Building2,
   Globe,
   FileText,
   Calendar,
-  Shield,
-  Lock,
-  Eye,
-  Share2,
+  ShieldAlert,
   UserCheck,
-  Database,
-  Cookie,
+  Briefcase,
   AlertTriangle,
+  Lock,
   Phone,
   Mail,
+  CheckCircle,
+  HelpCircle,
 } from "lucide-react";
 
 export const metadata = {
-  title: "Privacy & Platform Policy | InternKhojo",
+  title: "Trust & Safety Policy | InternKhojo",
   description:
-    "Learn how InternKhojo collects, uses, protects, and manages data for Candidates and Companies.",
+    "Learn about InternKhojo's safety standards, candidate protection rules, company expectations, and platform reporting guidelines.",
 };
 
 const EFFECTIVE_DATE = "August 09, 2026";
 const LAST_UPDATED = "August 09, 2026";
 
-export default function PrivacyPolicyPage() {
+export default function TrustAndSafetyPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "WebPage",
-        "@id": "https://internkhojo.com/privacy#webpage",
-        url: "https://internkhojo.com/privacy",
-        name: "Privacy & Platform Policy | InternKhojo",
+        "@id": "https://internkhojo.com/trust#webpage",
+        url: "https://internkhojo.com/trust",
+        name: "Trust & Safety Policy | InternKhojo",
         description:
-          "Learn how InternKhojo collects, uses, protects, and manages data for Candidates and Companies.",
+          "Learn about InternKhojo's safety standards, candidate protection rules, company expectations, and platform reporting guidelines.",
         inLanguage: "en-IN",
         datePublished: "2026-08-09",
         dateModified: "2026-08-09",
@@ -74,10 +73,10 @@ export default function PrivacyPolicyPage() {
         {/* Page Header */}
         <header className="mb-8 border-b border-slate-200 pb-8">
           <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-900 text-xs font-bold uppercase tracking-wider mb-3">
-            Platform Policy
+            Safety Policy
           </span>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight uppercase mb-4">
-            Privacy &amp; Platform <span className="text-red-700">Policy.</span>
+            Trust &amp; <span className="text-red-700">Safety.</span>
           </h1>
           <div className="flex flex-wrap gap-3 text-xs font-bold text-slate-900">
             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm">
@@ -157,7 +156,7 @@ export default function PrivacyPolicyPage() {
                   className="w-3.5 h-3.5 text-red-700"
                   aria-hidden="true"
                 />{" "}
-                Privacy Contact
+                Safety Reports
               </span>
               <p className="font-bold text-slate-900 text-sm">
                 <a
@@ -172,18 +171,23 @@ export default function PrivacyPolicyPage() {
           </div>
         </section>
 
-        {/* Dynamic Client Component Layout */}
-        <PrivacyClient>
+        {/* Dynamic Client Layout */}
+        <TrustClient>
           {/* Introduction */}
           <section className="border-b border-slate-200 pb-6">
             <p className="text-sm font-medium leading-relaxed mb-3">
-              This Privacy &amp; Platform Policy explains how InternKhojo,
-              operated by Corvian Ventures LLP, handles information and
-              maintains a reliable platform for Candidates and Companies.
+              InternKhojo is built to help Candidates find genuine opportunities
+              and Companies connect with suitable talent.
+            </p>
+            <p className="text-sm font-medium leading-relaxed mb-3">
+              We want InternKhojo to remain a professional and trustworthy
+              environment for everyone using the platform.
             </p>
             <p className="text-sm font-medium leading-relaxed">
-              By using InternKhojo, you acknowledge the practices described in
-              this Policy. Your use of the platform is also subject to our{" "}
+              This Trust &amp; Safety Policy explains what we prohibit, what
+              Users should watch for, and what InternKhojo may do when safety or
+              platform integrity is at risk. Your use of InternKhojo is also
+              governed by our{" "}
               <Link
                 href="/terms"
                 className="text-red-700 font-bold underline hover:text-red-800"
@@ -192,10 +196,10 @@ export default function PrivacyPolicyPage() {
               </Link>{" "}
               and{" "}
               <Link
-                href="/trust"
+                href="/privacy"
                 className="text-red-700 font-bold underline hover:text-red-800"
               >
-                Trust &amp; Safety Policy
+                Privacy &amp; Platform Policy
               </Link>
               .
             </p>
@@ -204,377 +208,341 @@ export default function PrivacyPolicyPage() {
           {/* Section 1 */}
           <section id="section-1" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <Eye
+              <ShieldAlert
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              1. INFORMATION WE COLLECT
+              1. WHAT WE DO NOT ALLOW
             </h2>
-            <p className="mb-3 font-semibold text-slate-900">
-              Depending on how you use InternKhojo, we may collect:
+            <p className="mb-2 font-bold text-slate-900">
+              InternKhojo does not allow:
             </p>
-
-            <div className="space-y-4 text-xs sm:text-sm font-medium">
-              <div>
-                <h3 className="font-bold text-slate-900 mb-1">
-                  Account Information
-                </h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Name, email address, and phone number</li>
-                  <li>Login credentials and account parameters</li>
-                  <li>Profile information</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-slate-900 mb-1">
-                  Candidate Information
-                </h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Education, skills, experience, and resumes</li>
-                  <li>Portfolios, projects, and application details</li>
-                  <li>
-                    Other career-related information you choose to provide
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-slate-900 mb-1">
-                  Company Information
-                </h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>
-                    Company name, description, website, and business information
-                  </li>
-                  <li>Recruiter information and listings</li>
-                  <li>
-                    Information provided during registration or verification
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-slate-900 mb-1">
-                  Platform and Technical Information
-                </h3>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>IP address, browser, and device parameters</li>
-                  <li>Operating system and usage metrics</li>
-                  <li>
-                    Log, security information, cookies, and similar technologies
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <p className="mt-3 text-xs sm:text-sm font-medium">
-              We may also collect information voluntarily provided through
-              forms, communications, support requests, or platform reports.
-            </p>
+            <ul className="list-disc pl-5 space-y-1.5 font-medium text-sm">
+              <li>fake or fraudulent internships or jobs;</li>
+              <li>fake Companies or Candidate accounts;</li>
+              <li>impersonation;</li>
+              <li>scams or phishing;</li>
+              <li>
+                requests for passwords, OTPs, PINs, or authentication
+                credentials;
+              </li>
+              <li>misleading job or internship descriptions;</li>
+              <li>fraudulent recruitment schemes;</li>
+              <li>deceptive collection of personal information;</li>
+              <li>harassment, threats, abuse, or intimidation;</li>
+              <li>unlawful discrimination;</li>
+              <li>spam or mass unsolicited communication;</li>
+              <li>malicious software or harmful code;</li>
+              <li>fraudulent applications or credentials;</li>
+              <li>
+                manipulation of reviews, applications, or platform activity; or
+              </li>
+              <li>activity that violates our Terms or applicable law.</li>
+            </ul>
           </section>
 
           {/* Section 2 */}
           <section id="section-2" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <Shield
+              <UserCheck
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              2. HOW WE USE INFORMATION
+              2. SAFETY FOR CANDIDATES
             </h2>
-            <p className="mb-2 font-bold text-slate-900">
-              We may use information to:
+            <p className="mb-3 font-semibold text-slate-900">
+              Before accepting an internship or job:
             </p>
-            <ul className="list-disc pl-5 space-y-1.5 font-medium text-xs sm:text-sm">
-              <li>Create and manage accounts;</li>
-              <li>Provide and personalise the Services;</li>
-              <li>Display Candidate profiles and Company information;</li>
-              <li>Display job and internship opportunities;</li>
-              <li>Process and manage applications;</li>
-              <li>
-                Facilitate communication between Candidates and Companies;
-              </li>
-              <li>Provide notifications, support, and technical updates;</li>
-              <li>
-                Maintain security, detect and prevent fraud, abuse, and misuse;
-              </li>
-              <li>
-                Investigate reported activity and analyze platform usage; and
-              </li>
-              <li>Comply with applicable legal and regulatory requirements.</li>
-            </ul>
+
+            <div className="space-y-4 text-xs sm:text-sm font-medium">
+              <div>
+                <h3 className="font-bold text-slate-900 mb-1">
+                  Verify the Company
+                </h3>
+                <p>
+                  Check the Company&apos;s website, official contact
+                  information, online presence, and other available information.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-slate-900 mb-1">
+                  Be Careful With Payments
+                </h3>
+                <p className="mb-2">
+                  Be cautious if someone asks you to pay money for:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>an interview;</li>
+                  <li>a job or internship;</li>
+                  <li>registration;</li>
+                  <li>training;</li>
+                  <li>equipment;</li>
+                  <li>a security deposit; or</li>
+                  <li>a guaranteed placement.</li>
+                </ul>
+                <p className="mt-2 text-xs font-bold text-slate-900 uppercase">
+                  InternKhojo does not guarantee any opportunity or employment
+                  outcome.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-slate-900 mb-1">
+                  Protect Your Credentials
+                </h3>
+                <p className="mb-2">Never share:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>passwords;</li>
+                  <li>OTPs;</li>
+                  <li>banking PINs;</li>
+                  <li>authentication codes;</li>
+                  <li>card credentials; or</li>
+                  <li>other sensitive security credentials</li>
+                </ul>
+                <p className="mt-2">
+                  with someone claiming to represent a Company or InternKhojo.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-slate-900 mb-1">
+                  Watch for Red Flags
+                </h3>
+                <p className="mb-2">Be cautious of:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>unrealistic compensation;</li>
+                  <li>guaranteed jobs;</li>
+                  <li>urgent payment demands;</li>
+                  <li>requests for unnecessary sensitive information;</li>
+                  <li>suspicious email addresses;</li>
+                  <li>
+                    pressure to move communication to unknown platforms; or
+                  </li>
+                  <li>requests that do not match the advertised role.</li>
+                </ul>
+              </div>
+            </div>
           </section>
 
           {/* Section 3 */}
           <section id="section-3" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <Share2
+              <Briefcase
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              3. HOW INFORMATION IS SHARED
+              3. SAFETY FOR COMPANIES
             </h2>
-            <p className="mb-3">
-              We may share information when reasonably necessary to provide the
-              Services. For example:
+            <p className="mb-2 font-bold text-slate-900">
+              Companies and recruiters are expected to:
             </p>
-            <ul className="list-disc pl-5 space-y-1.5 mb-3 font-medium text-xs sm:text-sm">
-              <li>
-                Candidate information may be made available to Companies where
-                relevant to recruitment or applications.
-              </li>
-              <li>
-                Company information and job listings may be visible to
-                Candidates and platform visitors as part of the Services.
-              </li>
-              <li>
-                Application information is shared directly with the Company to
-                which a Candidate applies.
-              </li>
-              <li>
-                Information may be shared with trusted service providers
-                assisting in platform operations.
-              </li>
-              <li>
-                Information may be disclosed where required by law or to protect
-                user safety and platform security.
-              </li>
+            <ul className="list-disc pl-5 space-y-1.5 mb-3 font-medium text-sm">
+              <li>publish genuine opportunities;</li>
+              <li>accurately describe roles and requirements;</li>
+              <li>use authorised company information;</li>
+              <li>communicate professionally;</li>
+              <li>protect Candidate information;</li>
+              <li>avoid deceptive recruitment practices; and</li>
+              <li>comply with applicable laws.</li>
             </ul>
-            <div className="p-4 bg-slate-100 rounded-lg border border-slate-300 text-xs font-bold text-slate-900 uppercase">
-              WE DO NOT SELL PERSONAL INFORMATION SIMPLY AS A SOURCE OF REVENUE.
-            </div>
+            <p className="font-semibold text-slate-900">
+              Companies should not request unnecessary sensitive information
+              from Candidates.
+            </p>
           </section>
 
           {/* Section 4 */}
           <section id="section-4" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <UserCheck
+              <Lock
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              4. PUBLIC AND USER-VISIBLE INFORMATION
+              4. PROTECTING CANDIDATE INFORMATION
             </h2>
             <p className="mb-3">
-              Information placed on a profile, job listing, Company page,
-              portfolio, or other public area may be visible to other Users or
-              visitors.
+              Companies must use Candidate information obtained through
+              InternKhojo only for legitimate purposes connected with
+              recruitment or other authorised interactions.
             </p>
-            <p className="font-semibold text-slate-900">
-              Do not publish information that you do not want to be visible to
-              others.
-            </p>
+            <p className="mb-2 font-bold text-slate-900">Companies must not:</p>
+            <ul className="list-disc pl-5 space-y-1.5 font-medium text-sm">
+              <li>sell Candidate information;</li>
+              <li>misuse Candidate information;</li>
+              <li>
+                publish Candidate information without appropriate authority;
+              </li>
+              <li>use Candidate information for unrelated spam; or</li>
+              <li>disclose Candidate information unlawfully.</li>
+            </ul>
           </section>
 
           {/* Section 5 */}
           <section id="section-5" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <Lock
+              <AlertTriangle
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              5. DATA SECURITY
+              5. REPORT SUSPICIOUS ACTIVITY
             </h2>
             <p className="mb-3">
-              We use reasonable technical and organizational measures designed
-              to protect information against unauthorized access, loss, misuse,
-              alteration, or disclosure.
+              If you encounter a suspicious job or internship, Company,
+              Candidate, profile, message, application, or other activity,
+              please report it to us.
             </p>
-            <p>
-              However, no online service can guarantee absolute security. You
-              remain responsible for maintaining the security of your account
-              credentials.
+            <p className="mb-2 font-bold text-slate-900">
+              Include, where possible:
             </p>
+            <ul className="list-disc pl-5 space-y-1.5 mb-4 font-medium text-sm">
+              <li>the relevant profile or listing;</li>
+              <li>what happened;</li>
+              <li>screenshots or supporting information; and</li>
+              <li>any other information that may help us investigate.</li>
+            </ul>
+            <div className="p-4 bg-red-100 rounded-lg border-l-4 border-red-700 text-red-950 font-bold text-xs sm:text-sm">
+              Report via Email:{" "}
+              <a
+                href="mailto:legal@internkhojo.com"
+                className="underline hover:text-red-800"
+              >
+                legal@internkhojo.com
+              </a>
+            </div>
           </section>
 
           {/* Section 6 */}
           <section id="section-6" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <Database
+              <ShieldAlert
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              6. DATA RETENTION
+              6. WHAT INTERNKHOJO MAY DO
             </h2>
-            <p className="mb-3">
-              We retain information for as long as reasonably necessary to
-              provide the Services, maintain accounts, support recruitment
-              workflows, satisfy legal obligations, and maintain platform
-              security.
+            <p className="mb-2 font-bold text-slate-900">
+              When we receive a report or identify suspicious activity, we may:
             </p>
+            <ul className="list-disc pl-5 space-y-1.5 mb-3 font-medium text-sm">
+              <li>investigate the matter;</li>
+              <li>request additional information;</li>
+              <li>restrict or remove a listing;</li>
+              <li>limit account functionality;</li>
+              <li>suspend an account;</li>
+              <li>terminate an account;</li>
+              <li>prevent repeated abuse;</li>
+              <li>preserve relevant information where appropriate; and</li>
+              <li>
+                cooperate with law-enforcement or regulatory authorities where
+                required or permitted by law.
+              </li>
+            </ul>
             <p>
-              When information is no longer required, we may delete or anonymize
-              it in accordance with applicable law.
+              We may take action even when we cannot publicly disclose the
+              details of an investigation.
             </p>
           </section>
 
           {/* Section 7 */}
           <section id="section-7" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <FileText
+              <CheckCircle
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              7. YOUR DATA RIGHTS
+              7. ACCOUNT VERIFICATION
             </h2>
-            <p className="mb-2 font-bold text-slate-900">
-              Subject to applicable law, you may have rights regarding your
-              personal data, including:
+            <p className="mb-3">
+              InternKhojo may introduce or use verification measures for
+              Candidates, Companies, recruiters, listings, or other Users.
             </p>
-            <ul className="list-disc pl-5 space-y-1.5 mb-3 font-medium text-xs sm:text-sm">
-              <li>Requesting access to your information;</li>
-              <li>Requesting correction of inaccurate information;</li>
-              <li>Requesting deletion where applicable;</li>
-              <li>
-                Withdrawing consent where processing relies on consent; and
-              </li>
-              <li>Raising privacy-related concerns or complaints.</li>
-            </ul>
+            <p className="mb-3">
+              Verification may involve information or documents reasonably
+              necessary to establish authenticity.
+            </p>
             <p>
-              You may contact us at{" "}
-              <a
-                href="mailto:legal@internkhojo.com"
-                className="text-red-700 font-bold underline hover:text-red-800"
-              >
-                legal@internkhojo.com
-              </a>{" "}
-              for privacy-related requests. Identity verification may be
-              required to protect your account.
+              A verification badge or similar indicator, where provided, does
+              not constitute a guarantee of a User&apos;s conduct,
+              qualifications, financial condition, or future behaviour.
             </p>
           </section>
 
           {/* Section 8 */}
           <section id="section-8" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <Cookie
+              <HelpCircle
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              8. COOKIES AND SIMILAR TECHNOLOGIES
+              8. OUR ROLE IN SAFETY
             </h2>
             <p className="mb-3">
-              InternKhojo uses cookies and similar technologies for
-              authentication, security, preferences, analytics, and platform
-              improvements.
+              InternKhojo provides tools and processes intended to reduce fraud,
+              abuse, and harmful activity. However, no platform can guarantee
+              that every fraudulent or harmful activity will be detected or
+              prevented.
+            </p>
+            <p className="mb-3">
+              InternKhojo does not guarantee the identity, legitimacy, conduct,
+              qualifications, financial condition, or intentions of every User.
             </p>
             <p>
-              You may control cookies through your browser settings. Disabling
-              certain cookies may affect platform functionality.
+              Users should conduct reasonable due diligence before entering into
+              an internship, employment, financial, or other relationship with
+              another User.
             </p>
           </section>
 
           {/* Section 9 */}
           <section id="section-9" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <Share2
+              <AlertTriangle
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              9. THIRD-PARTY SERVICES
+              9. IMMEDIATE SAFETY CONCERNS
             </h2>
-            <p className="mb-3">
-              InternKhojo may use third-party service providers for hosting,
-              authentication, analytics, communications, storage, or security
-              operations.
+            <p className="mb-3 font-semibold text-slate-900">
+              If you believe there is an immediate threat to your physical
+              safety or another person is in immediate danger, contact the
+              appropriate local emergency or law-enforcement authorities first.
             </p>
-            <p>
-              Third-party websites and services linked from InternKhojo are
-              governed by their own privacy policies.
+            <p className="text-xs uppercase font-bold text-slate-900">
+              InternKhojo&apos;s reporting system should not be treated as an
+              emergency response service.
             </p>
           </section>
 
           {/* Section 10 */}
           <section id="section-10" className="scroll-mt-8">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <UserCheck
-                className="w-5 h-5 text-red-700 shrink-0"
-                aria-hidden="true"
-              />{" "}
-              10. CHILDREN&apos;S AND MINOR USERS
-            </h2>
-            <p className="mb-3">
-              InternKhojo is designed primarily for students, Candidates, and
-              Companies. Where a User is a minor, applicable parental or
-              guardian consent requirements must be followed.
-            </p>
-            <p>
-              We do not knowingly collect children&apos;s personal data except
-              as permitted by applicable law and for legitimate purposes.
-            </p>
-          </section>
-
-          {/* Section 11 */}
-          <section id="section-11" className="scroll-mt-8">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <AlertTriangle
-                className="w-5 h-5 text-red-700 shrink-0"
-                aria-hidden="true"
-              />{" "}
-              11. PLATFORM INTEGRITY AND SAFETY
-            </h2>
-            <p className="mb-2 font-bold text-slate-900">
-              We process information to investigate and prevent:
-            </p>
-            <ul className="list-disc pl-5 space-y-1.5 font-medium text-xs sm:text-sm">
-              <li>Fake accounts, impersonation, and fraudulent listings;</li>
-              <li>
-                Spam, harassment, security incidents, and platform abuse; and
-              </li>
-              <li>
-                Violations of our Terms or{" "}
-                <Link
-                  href="/trust"
-                  className="text-red-700 font-bold underline hover:text-red-800"
-                >
-                  Trust &amp; Safety Policy
-                </Link>
-                .
-              </li>
-            </ul>
-          </section>
-
-          {/* Section 12 */}
-          <section id="section-12" className="scroll-mt-8">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-              <Shield
-                className="w-5 h-5 text-red-700 shrink-0"
-                aria-hidden="true"
-              />{" "}
-              12. LEGAL AND REGULATORY COMPLIANCE
-            </h2>
-            <p>
-              We may collect, retain, use, or disclose information where
-              necessary to comply with applicable Indian laws, legal processes,
-              government requests, court orders, or regulatory requirements.
-            </p>
-          </section>
-
-          {/* Section 13 */}
-          <section id="section-13" className="scroll-mt-8">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
               <FileText
                 className="w-5 h-5 text-red-700 shrink-0"
                 aria-hidden="true"
               />{" "}
-              13. POLICY UPDATES
+              10. POLICY UPDATES
             </h2>
             <p>
-              We may update this Policy when our Services, practices, or laws
-              change. Material changes may be communicated through the Services,
-              email, or other reasonable means where required by law.
+              We may update this Trust &amp; Safety Policy as InternKhojo&apos;s
+              Services, safety practices, or applicable laws develop. Material
+              changes may be communicated through the Services or other
+              reasonable means where required by law.
             </p>
           </section>
 
-          {/* Section 14 / Contact Section */}
+          {/* Section 11 / Contact Section */}
           <section
-            id="section-14"
+            id="section-11"
             role="contentinfo"
             className="pt-6 border-t border-slate-200 scroll-mt-8"
           >
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-4">
-              14. CONTACT US
+              11. CONTACT US
             </h2>
             <p className="text-xs sm:text-sm font-medium mb-3">
-              For privacy questions, requests, or complaints:
+              For safety reports, abuse complaints, suspicious activity, or
+              Trust &amp; Safety concerns:
             </p>
             <address className="not-italic bg-slate-100 p-5 rounded-lg border border-slate-300 text-xs sm:text-sm space-y-1.5 text-slate-900 font-semibold">
               <p className="font-bold text-sm sm:text-base">
@@ -616,18 +584,18 @@ export default function PrivacyPolicyPage() {
           {/* Footer Card */}
           <section className="bg-slate-900 text-white p-6 sm:p-8 rounded-xl scroll-mt-8">
             <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight mb-2 text-red-500">
-              Platform Governance
+              Community Protection
             </h2>
             <p className="text-xs sm:text-sm text-slate-100 leading-relaxed font-medium">
-              InternKhojo operates in full compliance with applicable Indian
-              privacy laws, including provisions under the Digital Personal Data
-              Protection Act, 2023.
+              We continually update our automated detection and reporting
+              workflows to maintain a safe, fraud-free environment across all
+              candidate and recruiter interactions.
             </p>
             <p className="mt-4 text-xs font-mono text-slate-300 border-t border-slate-800 pt-3">
               © 2026 Corvian Ventures LLP. All rights reserved.
             </p>
           </section>
-        </PrivacyClient>
+        </TrustClient>
       </div>
     </main>
   );

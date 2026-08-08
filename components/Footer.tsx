@@ -16,7 +16,7 @@ export default function Footer() {
         case "Careers":
           return "/careers";
         case "Trust & safety":
-          return "/privacy";
+          return "/trust";
         default:
           return "#"; // Contact & Partners remain un-redirected
       }
