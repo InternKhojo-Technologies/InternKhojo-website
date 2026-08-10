@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Eye,
   CheckCircle2,
+  UserCheck,
 } from "lucide-react";
 
 function timeAgo(dateString: string) {
@@ -49,6 +50,7 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [hasApplied, setHasApplied] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [resolvedDocUrl, setResolvedDocUrl] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -83,12 +85,24 @@ export default function JobDetailPage() {
 
     setJob(data);
 
-    // Check if user has already applied
+    // Fetch User Session and User Profile Role
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (user) {
+      // Get user profile details to check role
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setUserRole(profile.role);
+      }
+
+      // Check if user has already applied
       const { data: existingApp } = await supabase
         .from("applications")
         .select("id")
@@ -197,7 +211,7 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            {/* Description Card - PARSED RICH TEXT HTML RENDERING */}
+            {/* Description Card */}
             <div className="space-y-4 border-t border-slate-100 pt-10">
               <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 01 /
@@ -222,7 +236,7 @@ export default function JobDetailPage() {
               />
             </div>
 
-            {/* Bento-Style Blueprint */}
+            {/* Documentation Hub */}
             {resolvedDocUrl && (
               <div className="space-y-4 border-t border-slate-100 pt-10">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
@@ -312,6 +326,7 @@ export default function JobDetailPage() {
                   job={job}
                   hasApplied={hasApplied}
                   setHasApplied={setHasApplied}
+                  userRole={userRole}
                 />
               </div>
             </div>
@@ -319,7 +334,7 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      {/* Floating Blueprint Document Iframe Viewer */}
+      {/* Blueprint Document Iframe Modal */}
       {previewOpen && resolvedDocUrl && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200"
@@ -373,11 +388,14 @@ function ApplyButton({
   job,
   hasApplied,
   setHasApplied,
+  userRole,
 }: {
   job: any;
   hasApplied: boolean;
   setHasApplied: (val: boolean) => void;
+  userRole: string | null;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [answers, setAnswers] = useState<any>({});
   const [loading, setLoading] = useState(false);
@@ -435,6 +453,21 @@ function ApplyButton({
     if (open) fetchUserBucketResumes();
   }, [open]);
 
+  const handleInitialClick = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // 1. Unauthenticated Guest Handling: Redirect to Sign Up
+    if (!user) {
+      router.push("/signup?role=candidate");
+      return;
+    }
+
+    // 2. Candidate Open Modal
+    setOpen(true);
+  };
+
   const fetchUserBucketResumes = async () => {
     setFetchingFiles(true);
     const {
@@ -488,7 +521,7 @@ function ApplyButton({
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      alert("Login required.");
+      router.push("/signup?role=candidate");
       setLoading(false);
       return;
     }
@@ -546,7 +579,17 @@ function ApplyButton({
     }
   };
 
-  // IF USER ALREADY APPLIED: SHOW APPLIED BADGE BUTTON
+  // RECRUITER VIEW: HIDE APPLY BUTTON AND SHOW ROLE NOTICE
+  if (userRole === "recruiter") {
+    return (
+      <div className="w-full bg-slate-50 border border-slate-200 text-slate-500 py-3.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2">
+        <UserCheck size={15} className="text-slate-400" />
+        Recruiter Mode // Application Restricted
+      </div>
+    );
+  }
+
+  // ALREADY APPLIED VIEW: SHOW BADGE BUTTON
   if (hasApplied) {
     return (
       <button
@@ -561,7 +604,7 @@ function ApplyButton({
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={handleInitialClick}
         className="w-full bg-black hover:bg-gray-900 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-md active:scale-[0.98] cursor-pointer"
       >
         Apply for loop
