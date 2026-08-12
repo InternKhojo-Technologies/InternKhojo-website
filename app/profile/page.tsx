@@ -1,40 +1,35 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createAvatar } from "@dicebear/core";
 import { thumbs } from "@dicebear/collection";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  User,
-  Briefcase,
   Building2,
-  FileText,
-  ArrowRight,
-  Upload,
   Globe,
-  Mail,
   Linkedin,
-  Camera,
   Fingerprint,
   GraduationCap,
-  MapPin,
-  Users2,
-  ChevronDown,
-  Check,
-  Search,
   Sparkles,
-  Phone,
   Map,
-  X,
-  Plus,
   Github,
   Terminal,
   Code2,
+  MessageSquare,
 } from "lucide-react";
 
-// PRESETS & LOCAL DATA
+import { IdentityHeader } from "@/components/profile/IdentityHeader";
+import {
+  InputGroup,
+  PhoneInputGroup,
+  SkillManager,
+  SearchableDropdown,
+} from "@/components/profile/ProfileFormFields";
+import { ReviewSection } from "@/components/profile/ReviewSection";
+
+// PRESETS
 const LOCAL_COLLEGES = [
   "Thapar Institute of Engineering and Technology (TIET), Patiala",
   "IIT Delhi",
@@ -128,7 +123,7 @@ export default function ProfilePage() {
   const [countryCode, setCountryCode] = useState("+91");
   const [contactNumber, setContactNumber] = useState("");
 
-  // Global Links (Socials)
+  // Global Links
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [githubUrl, setGithubUrl] = useState("");
   const [leetcodeUrl, setLeetcodeUrl] = useState("");
@@ -151,12 +146,18 @@ export default function ProfilePage() {
   const [companyContact, setCompanyContact] = useState("");
 
   const isRecruiter = role === "recruiter";
-  const accentColor = isRecruiter ? "border-red-500" : "border-blue-600";
   const accentBg = isRecruiter ? "bg-red-500" : "bg-blue-600";
 
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  const formatUrl = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return "";
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  };
 
   const loadInitialData = async () => {
     try {
@@ -169,16 +170,13 @@ export default function ProfilePage() {
       }
       setUser(authUser);
 
-      // Fast, stable CDN Country loading blocks standard API errors
       try {
         const res = await fetch(
           "https://cdn.jsdelivr.net/npm/country-flag-emoji-json@2.0.0/dist/index.json",
         );
         if (!res.ok) throw new Error("CDN fallback request failed");
-
         const cData = await res.json();
-        const countriesList = cData.map((c: any) => c.name).sort();
-        setAllCountries(countriesList);
+        setAllCountries(cData.map((c: any) => c.name).sort());
 
         const processed = cData.map((c: any) => {
           let dialCode = "+1";
@@ -195,7 +193,6 @@ export default function ProfilePage() {
             flag: `https://flagcdn.com/w40/${c.code.toLowerCase()}.png`,
           };
         });
-
         setCountryData(processed);
       } catch (apiErr) {
         setAllCountries([
@@ -319,7 +316,7 @@ export default function ProfilePage() {
               description: companyBio,
               industry,
               size: companySize,
-              website: companyWebsite,
+              website: formatUrl(companyWebsite),
               contact_number: formattedCompanyPhone,
               headquarters: companyHeadquarters,
               logo_url: finalAvatar,
@@ -351,10 +348,10 @@ export default function ProfilePage() {
           grad_year:
             !isRecruiter && gradYear !== "" ? parseInt(gradYear) : null,
           skills,
-          links: linkedinUrl,
-          github_url: githubUrl,
-          leetcode_url: leetcodeUrl,
-          codeforces_url: codeforcesUrl,
+          links: formatUrl(linkedinUrl),
+          github_url: formatUrl(githubUrl),
+          leetcode_url: formatUrl(leetcodeUrl),
+          codeforces_url: formatUrl(codeforcesUrl),
         },
         { onConflict: "id" },
       );
@@ -378,60 +375,17 @@ export default function ProfilePage() {
   return (
     <div className="bg-white min-h-screen text-black">
       <div className="max-w-6xl mx-auto px-6 py-12">
-        {/* TOP IDENTITY CARD */}
-        <div className="relative overflow-hidden rounded-[3rem] p-10 mb-12 border border-gray-100 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 bg-white">
-          <div
-            className={`absolute -top-24 -left-24 w-80 h-80 blur-[140px] opacity-10 rounded-full ${accentBg} opacity-10`}
-          />
-          <div className="relative flex items-center gap-8 z-10">
-            <div className="relative group">
-              <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-[6px] border-white shadow-xl bg-gray-50 flex items-center justify-center">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    className="w-full h-full object-cover"
-                    alt="identity"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-200 animate-pulse" />
-                )}
-              </div>
-              <label
-                className={`absolute -bottom-2 -right-2 p-2.5 rounded-xl text-white shadow-lg cursor-pointer hover:scale-110 transition-all ${accentBg}`}
-              >
-                <Camera size={16} />
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setAvatarFile(file);
-                      setAvatarUrl(URL.createObjectURL(file));
-                    }
-                  }}
-                />
-              </label>
-            </div>
-            <div>
-              <h1 className="text-4xl font-black tracking-tighter leading-none">
-                {isRecruiter
-                  ? companyName || "Organization"
-                  : name || "Professional"}
-              </h1>
-              <p className="text-gray-400 font-bold text-sm mt-2 italic">
-                {user?.email}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={saveAll}
-            className="bg-black text-white px-12 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-red-500 transition-all z-10 active:scale-95"
-          >
-            Sync Profile
-          </button>
-        </div>
+        <IdentityHeader
+          avatarUrl={avatarUrl}
+          setAvatarUrl={setAvatarUrl}
+          setAvatarFile={setAvatarFile}
+          isRecruiter={isRecruiter}
+          companyName={companyName}
+          name={name}
+          userEmail={user?.email}
+          accentBg={accentBg}
+          onSave={saveAll}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
           {/* NAVIGATION */}
@@ -464,6 +418,12 @@ export default function ProfilePage() {
                 onClick={() => setActiveTab("social")}
                 icon={<Globe size={18} />}
                 label="Global Links"
+              />
+              <NavTab
+                active={activeTab === "reviews"}
+                onClick={() => setActiveTab("reviews")}
+                icon={<MessageSquare size={18} />}
+                label="Feedback & Reviews"
               />
             </div>
             <div className="bg-gray-50 rounded-[2rem] p-6 border border-gray-100">
@@ -584,7 +544,11 @@ export default function ProfilePage() {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
                       Key Expertise (Skills)
                     </label>
-                    <SkillManager selected={skills} setSelected={setSkills} />
+                    <SkillManager
+                      selected={skills}
+                      setSelected={setSkills}
+                      commonSkills={COMMON_SKILLS}
+                    />
                   </div>
                 </motion.div>
               )}
@@ -693,10 +657,21 @@ export default function ProfilePage() {
                         value={companyWebsite}
                         onChange={setCompanyWebsite}
                         icon={<Globe size={18} />}
-                        placeholder="https://company.com"
+                        placeholder="company.com"
                       />
                     )}
                   </div>
+                </motion.div>
+              )}
+
+              {activeTab === "reviews" && (
+                <motion.div
+                  key="reviews"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                >
+                  <ReviewSection user={user} role={role} name={name} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -707,391 +682,17 @@ export default function ProfilePage() {
   );
 }
 
-// UI SUB-COMPONENTS
 function NavTab({ icon, label, active, onClick }: any) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${active ? "bg-black text-white shadow-lg scale-105" : "text-gray-300 hover:text-black hover:bg-gray-50"}`}
+      className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+        active
+          ? "bg-black text-white shadow-lg scale-105"
+          : "text-gray-300 hover:text-black hover:bg-gray-50"
+      }`}
     >
       {icon} <span>{label}</span>
     </button>
-  );
-}
-
-function InputGroup({ label, value, onChange, placeholder, icon }: any) {
-  return (
-    <div className="space-y-3">
-      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          value={value || ""}
-          onChange={(e) => onChange?.(e.target.value)}
-          placeholder={placeholder}
-          className="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-bold border-none focus:ring-2 focus:ring-black outline-none transition-all"
-        />
-        {icon && (
-          <div className="absolute right-6 top-4 text-gray-300">{icon}</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PhoneInputGroup({
-  label,
-  code,
-  setCode,
-  number,
-  setNumber,
-  countryData,
-}: any) {
-  const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const h = (e: any) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
-  const filteredData = countryData.filter(
-    (c: any) =>
-      c.code.includes(searchQuery) ||
-      c.label.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-  const selected =
-    countryData.find(
-      (c: any) => c.code === code && (c.label === "IN" || c.label === "US"),
-    ) ||
-    countryData.find((c: any) => c.code === code) ||
-    countryData[0];
-
-  return (
-    <div className="space-y-3">
-      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-        {label}
-      </label>
-      <div className="flex gap-2" ref={ref}>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            className="bg-gray-50 rounded-2xl px-4 py-4 text-sm font-bold flex items-center gap-2 border-none hover:bg-gray-100 transition-all min-w-[125px]"
-          >
-            {selected?.flag && (
-              <img
-                src={selected.flag}
-                className="w-5 h-3 object-cover rounded-sm"
-                alt="Selected country flag"
-              />
-            )}
-            <span>{code}</span>
-          </button>
-          <AnimatePresence>
-            {open && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute top-full left-0 mt-2 bg-white shadow-2xl rounded-2xl border border-gray-100 z-[60] w-64 p-3 space-y-2"
-              >
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl mb-1">
-                  <Search size={14} className="text-gray-400" />
-                  <input
-                    autoFocus
-                    placeholder="Search code..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs font-bold w-full"
-                  />
-                </div>
-                <div className="max-h-48 overflow-y-auto space-y-1">
-                  {filteredData.map((c: any) => (
-                    <button
-                      type="button"
-                      key={c.label + c.code}
-                      onClick={() => {
-                        setCode(c.code);
-                        setOpen(false);
-                        setSearchQuery("");
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-50 text-xs font-bold flex items-center gap-3"
-                    >
-                      {c.flag && (
-                        <img
-                          src={c.flag}
-                          className="w-5 h-3 object-cover rounded-sm"
-                          alt=""
-                        />
-                      )}
-                      <span className="text-gray-400 w-6 uppercase">
-                        {c.label}
-                      </span>
-                      <span className="flex-1 text-right font-black">
-                        {c.code}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        <div className="relative flex-1">
-          <input
-            type="tel"
-            value={number || ""}
-            onChange={(e) => setNumber(e.target.value)}
-            placeholder="Number"
-            className="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-bold border-none focus:ring-2 focus:ring-black outline-none"
-          />
-          <div className="absolute right-6 top-4 text-gray-300">
-            <Phone size={16} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SkillManager({ selected, setSelected }: any) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const h = (e: any) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-  const addSkill = (s: string) => {
-    const trimmed = s.trim();
-    if (trimmed && !selected.includes(trimmed))
-      setSelected([...selected, trimmed]);
-    setQuery("");
-  };
-  return (
-    <div className="space-y-4" ref={ref}>
-      <div className="flex flex-wrap gap-2">
-        {selected.map((s: string) => (
-          <span
-            key={s}
-            className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 group"
-          >
-            {s}{" "}
-            <X
-              size={12}
-              className="cursor-pointer hover:text-red-500 transition-colors"
-              onClick={() =>
-                setSelected(selected.filter((i: string) => i !== s))
-              }
-            />
-          </span>
-        ))}
-      </div>
-      <div className="relative">
-        <input
-          value={query}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && query) {
-              addSkill(query);
-              e.preventDefault();
-            }
-          }}
-          placeholder="Search or add skill..."
-          className="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-bold border-none focus:ring-2 focus:ring-black outline-none"
-        />
-        <AnimatePresence>
-          {open && query && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="absolute top-full left-0 w-full mt-2 bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden"
-            >
-              <div className="max-h-48 overflow-y-auto">
-                {COMMON_SKILLS.filter((s) =>
-                  s.toLowerCase().includes(query.toLowerCase()),
-                ).map((s) => (
-                  <div
-                    key={s}
-                    onClick={() => addSkill(s)}
-                    className="px-6 py-3 text-xs font-bold hover:bg-gray-50 cursor-pointer flex justify-between items-center"
-                  >
-                    {s} <Plus size={14} className="text-gray-300" />
-                  </div>
-                ))}
-                <div
-                  onClick={() => addSkill(query)}
-                  className="px-6 py-3 text-xs font-black text-blue-600 bg-blue-50 cursor-pointer italic flex justify-between items-center"
-                >
-                  Add "{query}" <Plus size={14} />
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-function SearchableDropdown({
-  label,
-  value,
-  onSelect,
-  options,
-  type,
-  isEditable,
-}: any) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [apiOptions, setApiOptions] = useState<string[]>([]);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (value) setQuery(value);
-  }, [value]);
-
-  useEffect(() => {
-    const h = (e: any) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
-  useEffect(() => {
-    if (!query || query.length < 2) {
-      setApiOptions([]);
-      return;
-    }
-    const controller = new AbortController();
-    const fetchApiData = async () => {
-      try {
-        if (type === "college") {
-          const res = await fetch(
-            `https://universities.hipolabs.com/search?name=${encodeURIComponent(query)}`,
-            { signal: controller.signal },
-          );
-          if (res.ok) {
-            const data = await res.json();
-            setApiOptions(
-              Array.from(new Set(data.map((d: any) => d.name))).slice(
-                0,
-                15,
-              ) as string[],
-            );
-          }
-        } else if (type === "city") {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`,
-            {
-              signal: controller.signal,
-              headers: { "User-Agent": "InternKhojo/1.0" },
-            },
-          );
-          if (res.ok) {
-            const data = await res.json();
-            setApiOptions(
-              data.map((d: any) => {
-                const addr = d.address;
-                const city =
-                  addr.city || addr.town || addr.village || addr.suburb || "";
-                const state = addr.state || "";
-                return city && state
-                  ? `${city}, ${state}`
-                  : d.display_name.split(",").slice(0, 2).join(", ");
-              }),
-            );
-          }
-        }
-      } catch (e: any) {}
-    };
-    const debounce = setTimeout(fetchApiData, 400);
-    return () => {
-      clearTimeout(debounce);
-      controller.abort();
-    };
-  }, [query, type]);
-
-  const combined = [
-    ...new Set([
-      ...options.filter((o: string) =>
-        o.toLowerCase().includes(query.toLowerCase()),
-      ),
-      ...apiOptions,
-    ]),
-  ];
-
-  return (
-    <div className="space-y-3 relative" ref={ref}>
-      <div
-        onClick={() => setOpen(!open)}
-        className="w-full px-6 py-4 bg-gray-50 rounded-2xl text-sm font-bold flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-all"
-      >
-        <span className={query ? "text-black" : "text-gray-300"}>
-          {query || `Select ${label}...`}
-        </span>
-        <ChevronDown
-          size={16}
-          className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </div>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute z-50 top-full left-0 w-full mt-2 bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden"
-          >
-            <div className="p-3 border-b border-gray-50 flex items-center gap-2">
-              <Search size={14} className="text-gray-400" />
-              <input
-                autoFocus
-                className="w-full text-xs outline-none font-bold"
-                placeholder="Start typing..."
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  if (isEditable) onSelect(e.target.value);
-                }}
-              />
-            </div>
-            <div className="max-h-56 overflow-y-auto">
-              {combined.length > 0 ? (
-                combined.map((opt: string) => (
-                  <div
-                    key={opt}
-                    onClick={() => {
-                      onSelect(opt);
-                      setQuery(opt);
-                      setOpen(false);
-                    }}
-                    className="px-6 py-3 text-[11px] font-bold hover:bg-gray-50 cursor-pointer"
-                  >
-                    {opt}
-                  </div>
-                ))
-              ) : (
-                <div className="px-6 py-4 text-[10px] text-gray-400 italic text-center">
-                  {isEditable ? `Add "${query}" manually` : "No results found"}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
   );
 }
