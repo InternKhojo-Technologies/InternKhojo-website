@@ -66,6 +66,60 @@ const tags = [
   "UI Design",
   "Branding",
   "Social Media",
+
+  // Tech & Tools
+  "Figma",
+  "Canva",
+  "AWS",
+  "Azure",
+  "Oracle SQL",
+  "Docker",
+  "Kubernetes",
+  "Git",
+  "GitHub",
+  "Java",
+  "C++",
+  "C#",
+  "TypeScript",
+  "PHP",
+  "Flutter",
+
+  // Business & Professional
+  "Entrepreneurship",
+  "Project Management",
+  "Public Relations",
+  "Market Research",
+  "Business Analysis",
+  "Recruitment",
+  "Talent Acquisition",
+  "Supply Chain",
+
+  // Finance & Commerce
+  "Investment",
+  "Financial Analysis",
+  "Accounting",
+  "Taxation",
+  "Banking",
+
+  // Science & Engineering
+  "Physics",
+  "Chemistry",
+  "Mathematics",
+  "Electrical Engineering",
+  "Mechanical Engineering",
+  "Civil Engineering",
+  "Environmental Science",
+  "Bioinformatics",
+
+  // Arts, Media & Humanities
+  "Graphic Design",
+  "Illustration",
+  "Photography",
+  "Journalism",
+  "Creative Writing",
+  "Film Making",
+  "Public Speaking",
+  "Languages",
 ];
 
 type Item = {
@@ -130,7 +184,7 @@ export default function Hero() {
     // scatter after load
 
     setTimeout(() => {
-      items.current.forEach((p, i) => {
+      items.current.forEach((p) => {
         p.x = rand(-600, 600);
         p.y = rand(-300, 300);
       });
@@ -195,11 +249,41 @@ export default function Hero() {
   }, []);
 
   return (
-    <div className="relative h-screen overflow-hidden bg-white">
+    <div className="relative h-[100dvh] min-h-[600px] overflow-hidden bg-white">
       {/* text */}
 
-      <div className="absolute inset-0 flex items-center justify-center z-10">
-        <h1 className="text-7xl font-bold">Find what's next</h1>
+      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+        <h1
+          className="
+            relative
+            rounded-3xl
+            px-8 py-4
+            text-4xl sm:text-5xl md:text-6xl
+            lg:text-7xl
+            font-bold
+            text-center
+            whitespace-nowrap
+            pointer-events-none
+            before:absolute
+            before:inset-0
+            before:-z-10
+            before:rounded-3xl
+            before:bg-white/80
+            before:blur-xl
+            before:scale-110
+    
+            after:absolute
+            after:inset-0
+            after:-z-10
+            after:rounded-3xl
+            after:bg-white/60
+            after:blur-2xl
+            after:scale-125
+
+          "
+        >
+          Discover. Apply. Grow.
+        </h1>
       </div>
 
       {/* tags */}
@@ -223,9 +307,6 @@ export default function Hero() {
               shadow-black/15
 
               transition
-              hover:scale-110
-              hover:bg-blue-600
-              hover:text-white
             "
           >
             {t}
