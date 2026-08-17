@@ -1,0 +1,79 @@
+# ==============================================================================
+# Hey engineer / curious human,
+# We love building for Bharat's early-career talent. Come build with us:
+# https://internkhojo.com/careers
+# ==============================================================================
+
+# As a condition of accessing this website, you agree to abide by the following
+# content signals:
+#
+# (a) If a Content-Signal = yes, you may collect content for the corresponding use.
+# (b) If a Content-Signal = no, you may not collect content for the corresponding use.
+# (c) If the website operator does not include a Content-Signal for a
+#     corresponding use, the website operator neither grants nor restricts
+#     permission via Content-Signal with respect to the corresponding use.
+#
+# The content signals and their meanings are:
+# search:   Building a search index and providing search results (e.g., returning
+#           hyperlinks and short excerpts / job snippets from this website).
+# ai-input: Real-time search retrieval augmentation (RAG), live job discovery,
+#           and citation grounding for AI search engines.
+# ai-train: Training or fine-tuning machine learning / large foundation models.
+# use:      How AI systems may consume the content (immediate, reference, or full).
+#
+# ANY RESTRICTIONS EXPRESSED VIA CONTENT SIGNALS ARE EXPRESS RESERVATIONS OF
+# RIGHTS UNDER ARTICLE 4 OF THE EUROPEAN UNION DIRECTIVE 2019/790 ON COPYRIGHT
+# AND RELATED RIGHTS IN THE DIGITAL SINGLE MARKET.
+
+# Standard Search Engines & AI Search Assistants (Google, Bing, Gemini, ChatGPT, Claude, Perplexity)
+User-agent: *
+Content-Signal: search=yes,ai-input=yes,ai-train=no,use=reference
+
+# ------------------------------------------------------------------------------
+# 1. ALLOW PUBLIC PAGES, JOB POSTINGS & COMPANY DIRECTORIES
+# ------------------------------------------------------------------------------
+Allow: /
+Allow: /find
+Allow: /find/jobs
+Allow: /find/jobs/*
+Allow: /hire
+Allow: /hire/leaderboard
+Allow: /companies
+Allow: /companies/*
+Allow: /mentor
+Allow: /about
+Allow: /careers
+Allow: /trust
+Allow: /terms
+Allow: /privacy
+
+# ------------------------------------------------------------------------------
+# 2. DISALLOW PRIVATE APPLICANT DATA, DASHBOARDS, SETTINGS & APIS
+# ------------------------------------------------------------------------------
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /dashboard/candidate
+Disallow: /dashboard/candidate/*
+Disallow: /dashboard/recruiter
+Disallow: /dashboard/recruiter/*
+Disallow: /profile
+Disallow: /profile/*
+Disallow: /login
+Disallow: /signup
+Disallow: /api/
+Disallow: /api/*
+
+# ------------------------------------------------------------------------------
+# 3. PREVENT CRAWL BUDGET WASTE & DUPLICATE URL QUERIES (WELLFOUND PATTERN)
+# ------------------------------------------------------------------------------
+Disallow: /*?preview=*
+Disallow: /*?after_sign_in=*
+Disallow: /*?inFrame=*
+Disallow: /*?jobId=*
+Disallow: /*&preview=*
+Disallow: /*&inFrame=*
+
+# ------------------------------------------------------------------------------
+# 4. SITEMAP LOCATION
+# ------------------------------------------------------------------------------
+Sitemap: https://internkhojo.com/sitemap.xml
