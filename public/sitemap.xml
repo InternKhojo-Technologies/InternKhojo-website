@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- HOMEPAGE -->
+  <url>
+    <loc>https://internkhojo.com</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- JOB & TALENT DISCOVERY (HIGH RECRUITMENT PRIORITY) -->
+  <url>
+    <loc>https://internkhojo.com/find</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://internkhojo.com/find/jobs</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://internkhojo.com/hire</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://internkhojo.com/companies</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://internkhojo.com/hire/leaderboard</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://internkhojo.com/mentor</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- COMPANY & REPUTATION -->
+  <url>
+    <loc>https://internkhojo.com/about</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://internkhojo.com/careers</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://internkhojo.com/trust</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- LEGAL & COMPLIANCE -->
+  <url>
+    <loc>https://internkhojo.com/terms</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://internkhojo.com/privacy</loc>
+    <lastmod>2026-08-17T22:00:00.000Z</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>
