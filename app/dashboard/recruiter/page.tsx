@@ -4,18 +4,11 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Briefcase,
-  Users,
-  Menu,
-  Calendar,
-  RefreshCcw,
-} from "lucide-react";
+import { RefreshCcw, Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { useRecruiter } from "./layout";
 
-// charts
+// dynamic charts
 const LineChart = dynamic(() => import("recharts").then((m) => m.LineChart), {
   ssr: false,
 });
@@ -40,8 +33,7 @@ const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
 });
 
 export default function RecruiterDashboard() {
-  const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { profile } = useRecruiter();
   const [loading, setLoading] = useState(true);
 
   // Date States
@@ -57,31 +49,18 @@ export default function RecruiterDashboard() {
   const [jobRange, setJobRange] = useState({ start: lastWeek, end: today });
   const [appRange, setAppRange] = useState({ start: lastWeek, end: today });
 
-  const [profile, setProfile] = useState<any>(null);
-  const [company, setCompany] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
   const [apps, setApps] = useState<any[]>([]);
 
   useEffect(() => {
-    loadBaseData();
-  }, []);
-
-  // Keyboard shortcut toggle
-  useEffect(() => {
-    const handler = (e: any) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
-        setCollapsed((prev) => !prev);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    loadPageData();
   }, []);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const loadBaseData = async () => {
+  const loadPageData = async () => {
     setLoading(true);
     try {
       const {
@@ -89,25 +68,6 @@ export default function RecruiterDashboard() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Get Profile
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      setProfile(profileData);
-
-      // 2. Get Company
-      if (profileData?.company_id) {
-        const { data: companyData } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("id", profileData.company_id)
-          .single();
-        setCompany(companyData);
-      }
-
-      // 3. Get ALL Jobs
       const { data: jobsData, error: jobErr } = await supabase
         .from("jobs")
         .select("*")
@@ -116,7 +76,6 @@ export default function RecruiterDashboard() {
       if (jobErr) console.error("Job Fetch Error:", jobErr);
       setJobs(jobsData || []);
 
-      // 4. Get ALL Applications
       if (jobsData && jobsData.length > 0) {
         const jobIds = jobsData.map((j) => j.id);
         const { data: appsData, error: appErr } = await supabase
@@ -134,7 +93,6 @@ export default function RecruiterDashboard() {
     }
   };
 
-  // Logic to process data based on specific ranges for charts
   const processChartData = (
     data: any[],
     range: { start: string; end: string },
@@ -146,8 +104,6 @@ export default function RecruiterDashboard() {
     end.setHours(23, 59, 59, 999);
 
     const map: any = {};
-
-    // Fill the map with dates in the range
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       map[formatDate(new Date(d))] = 0;
     }
@@ -163,7 +119,6 @@ export default function RecruiterDashboard() {
     return Object.keys(map).map((k) => ({ date: k, [dataKey]: map[k] }));
   };
 
-  // MEMOIZED DATA
   const jobChartData = useMemo(
     () => processChartData(jobs, jobRange, "jobs"),
     [jobs, jobRange],
@@ -182,7 +137,6 @@ export default function RecruiterDashboard() {
       (a) => new Date(a.created_at) >= start && new Date(a.created_at) <= end,
     );
 
-    // Filter applications table stage column
     const hiredCount = apps.filter(
       (a) => a.stage?.toString().trim().toLowerCase() === "hired",
     ).length;
@@ -212,280 +166,203 @@ export default function RecruiterDashboard() {
       .slice(0, 5);
   }, [apps]);
 
-  const navItems = [
-    { name: "Dashboard", href: "/dashboard/recruiter", icon: LayoutDashboard },
-    { name: "Jobs", href: "/dashboard/recruiter/jobs", icon: Briefcase },
-    {
-      name: "Applications",
-      href: "/dashboard/recruiter/applications",
-      icon: Users,
-    },
-  ];
-
   const handleGlobalChange = (newRange: { start: string; end: string }) => {
     setGlobalRange(newRange);
     setJobRange(newRange);
     setAppRange(newRange);
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center text-red-500 font-medium">
-        Loading Dashboard...
+      <div className="h-96 w-full flex items-center justify-center text-red-500 font-medium">
+        Loading Analytics...
       </div>
     );
+  }
 
   return (
-    <div className="bg-white min-h-screen flex p-6 gap-6 text-black">
-      {/* SIDEBAR */}
-      <motion.div
-        animate={{ width: collapsed ? 80 : 260 }}
-        transition={{ duration: 0.25 }}
-        className="rounded-2xl p-4 shadow-[0_10px_30px_rgb(0,0,0,0.05)] bg-white border border-gray-50 flex flex-col justify-between z-10"
-      >
+    <div className="space-y-6">
+      {/* HEADER */}
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="mb-6 hover:bg-gray-100 p-2 rounded-lg transition-colors"
-          >
-            <Menu />
-          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            Welcome, {profile?.name || "Recruiter"}
+          </h1>
+          <p className="text-gray-400 text-xs sm:text-sm">
+            Here is what's happening with your job postings.
+          </p>
+        </div>
 
-          <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-              {company?.logo_url ? (
-                <img
-                  src={company.logo_url}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                company?.name?.[0]
-              )}
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          <button
+            onClick={loadPageData}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 cursor-pointer"
+            aria-label="Refresh Data"
+          >
+            <RefreshCcw size={18} />
+          </button>
+          <div className="h-6 w-[1px] bg-gray-200 hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden md:inline">
+              Global View
+            </span>
+            <DateRangePicker
+              range={globalRange}
+              setRange={handleGlobalChange}
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* STATS GRID */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Stat label="Total Jobs" value={displayStats.totalJobs} />
+        <Stat
+          label="Total Applicants"
+          value={displayStats.totalApps}
+          highlight
+        />
+        <Stat label="Total Hired" value={displayStats.hired} />
+        <Stat label="Success Rate" value={`${displayStats.conversion}%`} />
+      </div>
+
+      {/* CHARTS GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card
+          title="Jobs Published"
+          headerAction={
+            <DateRangePicker
+              range={jobRange}
+              setRange={setJobRange}
+              size="sm"
+            />
+          }
+        >
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={jobChartData}>
+              <XAxis
+                dataKey="date"
+                fontSize={10}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                }}
+              />
+              <Bar
+                dataKey="jobs"
+                fill="#ef4444"
+                radius={[6, 6, 0, 0]}
+                barSize={24}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card
+          title="Application Volume"
+          headerAction={
+            <DateRangePicker
+              range={appRange}
+              setRange={setAppRange}
+              size="sm"
+            />
+          }
+        >
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={appChartData}>
+              <XAxis
+                dataKey="date"
+                fontSize={10}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="applications"
+                stroke="#000"
+                strokeWidth={3}
+                dot={{
+                  fill: "#ef4444",
+                  strokeWidth: 2,
+                  r: 4,
+                  stroke: "#fff",
+                }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* LOWER SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
+        <Card title="Activity Summary">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+              <span className="text-xs sm:text-sm text-gray-600 font-medium">
+                Apps in Selected Period
+              </span>
+              <span className="text-base sm:text-lg font-bold text-red-500">
+                {displayStats.periodApps}
+              </span>
             </div>
-            {!collapsed && (
-              <div className="overflow-hidden">
-                <p className="text-sm font-bold truncate">
-                  {company?.name || "Company"}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 border border-gray-100 rounded-xl">
+                <p className="text-[10px] uppercase font-bold text-gray-400">
+                  Avg per Job
                 </p>
-                <p className="text-xs text-gray-500 uppercase tracking-tighter font-semibold">
-                  Recruiter
+                <p className="text-base sm:text-lg font-semibold">
+                  {displayStats.totalJobs > 0
+                    ? (displayStats.totalApps / displayStats.totalJobs).toFixed(
+                        1,
+                      )
+                    : 0}
                 </p>
               </div>
+              <div className="p-3 border border-gray-100 rounded-xl">
+                <p className="text-[10px] uppercase font-bold text-gray-400">
+                  Status
+                </p>
+                <p className="text-base sm:text-lg font-semibold">Active</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Top Performing Roles">
+          <div className="space-y-2">
+            {topJobs.length > 0 ? (
+              topJobs.map((j: any, i) => (
+                <div
+                  key={i}
+                  className="flex justify-between text-xs sm:text-sm items-center p-2 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <span className="font-medium text-gray-700 truncate max-w-[180px] sm:max-w-[240px]">
+                    {j.title}
+                  </span>
+                  <span className="bg-red-50 px-2.5 py-0.5 rounded-full text-red-600 font-bold text-[11px]">
+                    {j.count} apps
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-400 text-xs sm:text-sm text-center py-8">
+                No applications found yet.
+              </p>
             )}
           </div>
-
-          <div className="space-y-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = pathname === item.href;
-              return (
-                <a key={item.name} href={item.href}>
-                  <motion.div
-                    whileHover={{ x: 3 }}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${active ? "bg-red-500 text-white shadow-lg shadow-red-200" : "hover:bg-gray-100 text-gray-600"}`}
-                  >
-                    <Icon size={18} />
-                    {!collapsed && (
-                      <span className="font-medium text-sm">{item.name}</span>
-                    )}
-                  </motion.div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-        {!collapsed && (
-          <div className="p-3 bg-gray-50 rounded-xl">
-            <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">
-              Shortcut
-            </p>
-            <p className="text-xs text-gray-500">⌘ + B to toggle</p>
-          </div>
-        )}
-      </motion.div>
-
-      {/* MAIN CONTENT */}
-      <div className="flex-1 space-y-6 overflow-y-auto">
-        <header className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome, {profile?.name || "Recruiter"}
-            </h1>
-            <p className="text-gray-400 text-sm">
-              Here is what's happening with your job postings.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button
-              onClick={loadBaseData}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400"
-            >
-              <RefreshCcw size={18} />
-            </button>
-            <div className="h-8 w-[1px] bg-gray-200" />
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                Global View
-              </span>
-              <DateRangePicker
-                range={globalRange}
-                setRange={handleGlobalChange}
-              />
-            </div>
-          </div>
-        </header>
-
-        {/* STATS */}
-        <div className="grid grid-cols-4 gap-4">
-          <Stat label="Total Jobs Posted" value={displayStats.totalJobs} />
-          <Stat
-            label="Total Applicants"
-            value={displayStats.totalApps}
-            highlight
-          />
-          <Stat label="Total Hired" value={displayStats.hired} />
-          <Stat label="Success Rate" value={`${displayStats.conversion}%`} />
-        </div>
-
-        {/* CHARTS */}
-        <div className="grid grid-cols-2 gap-6">
-          <Card
-            title="Jobs Published"
-            headerAction={
-              <DateRangePicker
-                range={jobRange}
-                setRange={setJobRange}
-                size="sm"
-              />
-            }
-          >
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={jobChartData}>
-                <XAxis
-                  dataKey="date"
-                  fontSize={10}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-                  }}
-                />
-                <Bar
-                  dataKey="jobs"
-                  fill="#ef4444"
-                  radius={[6, 6, 0, 0]}
-                  barSize={30}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-
-          <Card
-            title="Application Volume"
-            headerAction={
-              <DateRangePicker
-                range={appRange}
-                setRange={setAppRange}
-                size="sm"
-              />
-            }
-          >
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={appChartData}>
-                <XAxis
-                  dataKey="date"
-                  fontSize={10}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="applications"
-                  stroke="#000"
-                  strokeWidth={3}
-                  dot={{
-                    fill: "#ef4444",
-                    strokeWidth: 2,
-                    r: 4,
-                    stroke: "#fff",
-                  }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </div>
-
-        {/* LOWER SECTION */}
-        <div className="grid grid-cols-2 gap-6 pb-6">
-          <Card title="Activity Summary">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                <span className="text-sm text-gray-600 font-medium">
-                  Apps in Selected Period
-                </span>
-                <span className="text-lg font-bold text-red-500">
-                  {displayStats.periodApps}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 border border-gray-100 rounded-xl">
-                  <p className="text-[10px] uppercase font-bold text-gray-400">
-                    Avg per Job
-                  </p>
-                  <p className="text-lg font-semibold">
-                    {displayStats.totalJobs > 0
-                      ? (
-                          displayStats.totalApps / displayStats.totalJobs
-                        ).toFixed(1)
-                      : 0}
-                  </p>
-                </div>
-                <div className="p-3 border border-gray-100 rounded-xl">
-                  <p className="text-[10px] uppercase font-bold text-gray-400">
-                    Status
-                  </p>
-                  <p className="text-lg font-semibold">Active</p>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card title="Top Performing Roles">
-            <div className="space-y-2">
-              {topJobs.length > 0 ? (
-                topJobs.map((j: any, i) => (
-                  <div
-                    key={i}
-                    className="flex justify-between text-sm items-center p-2 hover:bg-gray-50 rounded-lg transition-colors"
-                  >
-                    <span className="font-medium text-gray-700 truncate max-w-[220px]">
-                      {j.title}
-                    </span>
-                    <span className="bg-red-50 px-3 py-1 rounded-full text-red-600 font-bold text-xs">
-                      {j.count} apps
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-400 text-sm text-center py-8">
-                  No applications found yet.
-                </p>
-              )}
-            </div>
-          </Card>
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -498,7 +375,6 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
   );
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  // Close calendar on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -516,7 +392,6 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
     };
   }, [activeTab]);
 
-  // Calendar Days Calculation
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -524,12 +399,8 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
 
   const daysArray = useMemo(() => {
     const arr = [];
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      arr.push(null);
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-      arr.push(new Date(year, month, d));
-    }
+    for (let i = 0; i < firstDayOfMonth; i++) arr.push(null);
+    for (let d = 1; d <= daysInMonth; d++) arr.push(new Date(year, month, d));
     return arr;
   }, [year, month, firstDayOfMonth, daysInMonth]);
 
@@ -556,39 +427,20 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
     }
   };
 
-  const isSelectedStart = (date: Date) => {
-    if (!range.start) return false;
-    const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return dStr === range.start;
-  };
-
-  const isSelectedEnd = (date: Date) => {
-    if (!range.end) return false;
-    const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return dStr === range.end;
-  };
-
-  const isInRange = (date: Date) => {
-    if (!range.start || !range.end) return false;
-    const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return dStr > range.start && dStr < range.end;
-  };
-
   const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
 
   return (
     <div ref={pickerRef} className="relative inline-block text-left">
-      {/* SEPARATE START & END BUTTONS */}
       <div
-        className={`flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg shadow-sm ${
-          size === "sm" ? "p-1 text-[11px]" : "p-1.5 text-xs"
+        className={`flex items-center gap-1 bg-white border border-gray-200 rounded-lg shadow-sm ${
+          size === "sm" ? "p-1 text-[10px]" : "p-1.5 text-xs"
         }`}
       >
         <button
           type="button"
           onClick={() => setActiveTab(activeTab === "start" ? null : "start")}
-          className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors ${
+          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
             activeTab === "start"
               ? "bg-red-50 text-red-600 font-bold border border-red-200"
               : "hover:bg-gray-100 text-gray-700 font-medium"
@@ -599,9 +451,7 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
             className={activeTab === "start" ? "text-red-500" : "text-gray-400"}
           />
           <span>
-            {range.start
-              ? format(new Date(range.start), "dd/MM/yyyy")
-              : "Start Date"}
+            {range.start ? format(new Date(range.start), "dd/MM/yy") : "Start"}
           </span>
         </button>
 
@@ -610,7 +460,7 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
         <button
           type="button"
           onClick={() => setActiveTab(activeTab === "end" ? null : "end")}
-          className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors ${
+          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
             activeTab === "end"
               ? "bg-red-50 text-red-600 font-bold border border-red-200"
               : "hover:bg-gray-100 text-gray-700 font-medium"
@@ -621,19 +471,17 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
             className={activeTab === "end" ? "text-red-500" : "text-gray-400"}
           />
           <span>
-            {range.end ? format(new Date(range.end), "dd/MM/yyyy") : "End Date"}
+            {range.end ? format(new Date(range.end), "dd/MM/yy") : "End"}
           </span>
         </button>
       </div>
 
-      {/* IMPROVED CONNECTED RANGE CALENDAR POPOVER */}
       {activeTab && (
-        <div className="absolute right-0 mt-1 z-[999] bg-white border border-gray-200 rounded-2xl shadow-2xl p-3 w-[270px]">
-          {/* Header Bar */}
+        <div className="absolute right-0 mt-1 z-[999] bg-white border border-gray-200 rounded-2xl shadow-2xl p-3 w-[260px] sm:w-[270px]">
           <div className="flex items-center justify-between mb-3 px-1">
             <span className="text-xs font-bold text-gray-900">
               {currentMonth.toLocaleString("en-US", {
-                month: "long",
+                month: "short",
                 year: "numeric",
               })}
             </span>
@@ -641,64 +489,58 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
               <button
                 type="button"
                 onClick={prevMonth}
-                className="h-7 w-7 flex items-center justify-center hover:bg-red-50 rounded-full text-red-600 transition-colors font-extrabold text-base leading-none"
+                className="h-6 w-6 flex items-center justify-center hover:bg-red-50 rounded-full text-red-600 transition-colors font-extrabold text-sm"
               >
                 ‹
               </button>
               <button
                 type="button"
                 onClick={nextMonth}
-                className="h-7 w-7 flex items-center justify-center hover:bg-red-50 rounded-full text-red-600 transition-colors font-extrabold text-base leading-none"
+                className="h-6 w-6 flex items-center justify-center hover:bg-red-50 rounded-full text-red-600 transition-colors font-extrabold text-sm"
               >
                 ›
               </button>
             </div>
           </div>
 
-          {/* Weekday Header Grid */}
           <div className="grid grid-cols-7 gap-0 text-center mb-1">
             {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
               <span
                 key={day}
-                className="text-[10px] font-bold text-gray-400 uppercase"
+                className="text-[9px] font-bold text-gray-400 uppercase"
               >
                 {day}
               </span>
             ))}
           </div>
 
-          {/* Connected 7-Column Date Grid */}
           <div className="grid grid-cols-7 gap-y-1 text-center">
             {daysArray.map((date, idx) => {
-              if (!date) {
-                return <div key={`empty-${idx}`} className="h-7 w-full" />;
-              }
+              if (!date)
+                return <div key={`empty-${idx}`} className="h-6 w-full" />;
 
-              const isStart = isSelectedStart(date);
-              const isEnd = isSelectedEnd(date);
-              const inRange = isInRange(date);
+              const dStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+              const isStart = dStr === range.start;
+              const isEnd = dStr === range.end;
+              const inRange =
+                range.start &&
+                range.end &&
+                dStr > range.start &&
+                dStr < range.end;
 
               return (
                 <div
                   key={date.toISOString()}
-                  className={`relative flex items-center justify-center h-7 w-full ${
+                  className={`relative flex items-center justify-center h-6 w-full ${
                     inRange ? "bg-red-50 text-red-600" : ""
-                  } ${
-                    isStart && range.end && range.start !== range.end
-                      ? "bg-gradient-to-r from-transparent via-red-50 to-red-50"
-                      : ""
-                  } ${
-                    isEnd && range.start && range.start !== range.end
-                      ? "bg-gradient-to-l from-transparent via-red-50 to-red-50"
-                      : ""
                   }`}
                 >
                   <button
                     type="button"
                     onClick={() => handleDateClick(date)}
-                    className={`h-7 w-7 text-xs flex items-center justify-center transition-all ${
+                    className={`h-6 w-6 text-[11px] flex items-center justify-center transition-all ${
                       isStart || isEnd
-                        ? "bg-red-500 text-white font-bold rounded-full shadow-md z-10 scale-105"
+                        ? "bg-red-500 text-white font-bold rounded-full shadow-sm z-10"
                         : "text-gray-700 hover:bg-gray-100 rounded-full"
                     }`}
                   >
@@ -718,10 +560,12 @@ function Card({ children, title, headerAction }: any) {
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50"
+      className="bg-white p-4 sm:p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50"
     >
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="font-bold text-gray-800 tracking-tight">{title}</h3>
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
+        <h3 className="font-bold text-sm sm:text-base text-gray-800 tracking-tight">
+          {title}
+        </h3>
         {headerAction}
       </div>
       {children}
@@ -733,13 +577,15 @@ function Stat({ label, value, highlight }: any) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="bg-white p-5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 text-center"
+      className="bg-white p-4 sm:p-5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 text-center"
     >
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+      <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">
         {label}
       </p>
       <p
-        className={`text-2xl font-black ${highlight ? "text-red-500" : "text-gray-900"}`}
+        className={`text-xl sm:text-2xl font-black ${
+          highlight ? "text-red-500" : "text-gray-900"
+        }`}
       >
         {value}
       </p>
