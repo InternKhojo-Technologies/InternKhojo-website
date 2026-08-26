@@ -28,11 +28,19 @@ export default function SignupContent() {
 
   useEffect(() => {
     const urlRole = searchParams.get("role");
-    if (urlRole) setRole(urlRole.toLowerCase());
+
+    if (urlRole) {
+      const normalizedRole = urlRole.toLowerCase();
+
+      if (normalizedRole === "candidate" || normalizedRole === "recruiter") {
+        setRole(normalizedRole);
+      }
+    }
   }, [searchParams]);
 
   const handleSignup = async () => {
     if (!acceptedTerms) return;
+
     if (!email || !password) {
       toast.error("Please fill in all fields");
       return;
@@ -40,9 +48,16 @@ export default function SignupContent() {
 
     setLoading(true);
 
+    const normalizedRole = role.toLowerCase();
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          role: normalizedRole,
+        },
+      },
     });
 
     if (error) {
@@ -52,22 +67,8 @@ export default function SignupContent() {
     }
 
     if (data.user) {
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", data.user.id)
-        .maybeSingle();
-
-      if (!existingProfile) {
-        await supabase.from("profiles").insert({
-          id: data.user.id,
-          email: data.user.email,
-          role: role.toLowerCase(),
-        });
-      }
-
       toast.success("Account created successfully!");
-      router.push(`/login?role=${role}`);
+      router.push(`/login?role=${normalizedRole}`);
     }
 
     setLoading(false);
@@ -75,9 +76,13 @@ export default function SignupContent() {
 
   const handleGoogle = async () => {
     if (!acceptedTerms) return;
-    localStorage.setItem("signup_role", role.toLowerCase());
+
+    const normalizedRole = role.toLowerCase();
+
+    localStorage.setItem("signup_role", normalizedRole);
 
     const isLocalhost = window.location.hostname === "localhost";
+
     const redirectUrl = isLocalhost
       ? "http://localhost:3000/login"
       : "https://internkhojo.com/login";
@@ -89,18 +94,19 @@ export default function SignupContent() {
       },
     });
 
-    if (error) toast.error("Google authentication failed");
+    if (error) {
+      toast.error("Google authentication failed");
+    }
   };
 
   return (
     <div className="min-h-screen w-full flex bg-white antialiased select-none overflow-x-hidden">
       <Toaster position="top-center" richColors />
 
-      {/* ================= LEFT SIDE: STARTUP ORIENTED DYNAMIC BRANDING (Hidden on Mobile) ================= */}
+      {/* LEFT SIDE */}
       <div className="hidden lg:flex lg:w-[50%] bg-[#fafafa] border-r border-gray-100 p-16 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
 
-        {/* Left Side Static Branding */}
         <div className="flex items-center gap-2.5 relative z-10">
           <img
             src="/logo-4.png"
@@ -112,7 +118,6 @@ export default function SignupContent() {
           </span>
         </div>
 
-        {/* 🔥 INSTANT TRANSITION CONTAINER (Bypasses lag on fast tab changes) */}
         <div className="relative z-10 my-auto max-w-lg w-full">
           {role === "candidate" ? (
             <div className="space-y-8 transition-opacity duration-200 opacity-100">
@@ -120,11 +125,13 @@ export default function SignupContent() {
                 Build Your Identity <br />
                 on <span className="text-blue-600 italic">Proof of Work.</span>
               </h2>
+
               <p className="text-gray-500 font-medium text-lg leading-relaxed">
                 Bypass legacy resumes and mechanical filters. InternKhojo
                 connects you directly with top-tier tech startups and service
                 platforms based on what you can actually build.
               </p>
+
               <div className="space-y-4 pt-4">
                 <div className="flex items-center gap-4 text-sm font-bold text-gray-800">
                   <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
@@ -132,6 +139,7 @@ export default function SignupContent() {
                   </div>
                   Zero Ghosting — Live Application Status
                 </div>
+
                 <div className="flex items-center gap-4 text-sm font-bold text-gray-800">
                   <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
                     <Target size={16} />
@@ -146,11 +154,13 @@ export default function SignupContent() {
                 Deploy Elite <br />
                 Talent <span className="text-red-600">Pipelines.</span>
               </h2>
+
               <p className="text-gray-500 font-medium text-lg leading-relaxed">
                 Stop parsing generic CVs. Source early-career developers,
                 graphic professionals, and builders across Bharat through
                 pre-vetted project repositories.
               </p>
+
               <div className="space-y-4 pt-4">
                 <div className="flex items-center gap-4 text-sm font-bold text-gray-800">
                   <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center text-red-600 flex-shrink-0">
@@ -158,6 +168,7 @@ export default function SignupContent() {
                   </div>
                   Curation Engine via Practical Repos
                 </div>
+
                 <div className="flex items-center gap-4 text-sm font-bold text-gray-800">
                   <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center text-red-600 flex-shrink-0">
                     <Users size={16} />
@@ -174,9 +185,9 @@ export default function SignupContent() {
         </div>
       </div>
 
-      {/* ================= RIGHT SIDE: AUTH FORM COMPONENT (Fully Responsive Mobile Design) ================= */}
+      {/* RIGHT SIDE */}
       <div className="w-full lg:w-[50%] flex flex-col justify-center items-center px-6 sm:px-12 py-12 md:py-16 relative">
-        {/* 🔥 MOBILE TOP HEADER: Shows seamlessly only when left branding panel hides */}
+        {/* MOBILE HEADER */}
         <div className="flex lg:hidden items-center justify-center gap-2 mb-8 w-full">
           <img
             src="/logo-4.png"
@@ -192,17 +203,20 @@ export default function SignupContent() {
           <h1 className="text-3xl font-[950] mb-1 tracking-tight uppercase text-gray-900 text-center lg:text-left">
             Create Account
           </h1>
+
           <p className="text-sm text-gray-400 mb-8 font-medium text-center lg:text-left">
             Initialize your credentials as a {role}
           </p>
 
-          {/* Smooth Slider Switch */}
+          {/* ROLE SWITCH */}
           <div className="flex mb-6 bg-gray-50 border border-gray-100 p-1 rounded-2xl w-full relative">
             <button
               type="button"
               onClick={() => {
                 setRole("candidate");
-                router.push("/signup?role=candidate", { scroll: false });
+                router.push("/signup?role=candidate", {
+                  scroll: false,
+                });
               }}
               className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-colors duration-300 relative z-10 ${
                 role === "candidate"
@@ -215,7 +229,11 @@ export default function SignupContent() {
                 <motion.div
                   layoutId="active-signup-pill"
                   className="absolute inset-0 bg-black rounded-xl -z-10"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 30,
+                  }}
                 />
               )}
             </button>
@@ -224,7 +242,9 @@ export default function SignupContent() {
               type="button"
               onClick={() => {
                 setRole("recruiter");
-                router.push("/signup?role=recruiter", { scroll: false });
+                router.push("/signup?role=recruiter", {
+                  scroll: false,
+                });
               }}
               className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-colors duration-300 relative z-10 ${
                 role === "recruiter"
@@ -237,19 +257,24 @@ export default function SignupContent() {
                 <motion.div
                   layoutId="active-signup-pill"
                   className="absolute inset-0 bg-black rounded-xl -z-10"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 380,
+                    damping: 30,
+                  }}
                 />
               )}
             </button>
           </div>
 
-          {/* Form Fields */}
+          {/* FORM */}
           <div className="space-y-3.5">
             <div className="relative group">
               <Mail
                 className="absolute left-4 top-4 text-gray-400 group-focus-within:text-black transition-colors"
                 size={16}
               />
+
               <input
                 type="email"
                 placeholder="Email address"
@@ -264,6 +289,7 @@ export default function SignupContent() {
                 className="absolute left-4 top-4 text-gray-400 group-focus-within:text-black transition-colors"
                 size={16}
               />
+
               <input
                 type="password"
                 placeholder="Password"
@@ -274,7 +300,7 @@ export default function SignupContent() {
             </div>
           </div>
 
-          {/* 🔥 FIXED CHECKBOX TRIGGER WRAPPER (Guaranteed toggle and state callback) */}
+          {/* TERMS */}
           <div className="flex items-start gap-3 mt-5 px-0.5">
             <div
               className="flex items-center mt-0.5 cursor-pointer"
@@ -294,6 +320,7 @@ export default function SignupContent() {
                 )}
               </div>
             </div>
+
             <label className="text-xs text-gray-400 font-semibold leading-normal select-none">
               I accept all the{" "}
               <Link
@@ -313,7 +340,7 @@ export default function SignupContent() {
             </label>
           </div>
 
-          {/* Actions Block */}
+          {/* ACTIONS */}
           <div className="space-y-3.5 mt-6">
             <button
               onClick={handleSignup}
@@ -344,7 +371,7 @@ export default function SignupContent() {
                   : "hover:bg-gray-50 hover:border-gray-300"
               }`}
             >
-              {/* High-Accuracy Official Google Logo */}
+              {/* Google Logo */}
               <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
