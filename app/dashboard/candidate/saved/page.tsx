@@ -16,6 +16,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
+import posthog from "posthog-js";
 
 export default function SavedJobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -67,6 +68,12 @@ export default function SavedJobsPage() {
       .eq("user_id", user?.id);
 
     if (!error) {
+      if (
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+        process.env.NEXT_PUBLIC_POSTHOG_HOST
+      ) {
+        posthog.capture("saved_job_removed", { job_id: jobId });
+      }
       setJobs(jobs.filter((job) => job.id !== jobId));
     }
   };

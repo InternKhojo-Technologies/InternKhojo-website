@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { send } from "process";
+import posthog from "posthog-js";
 
 export default function CompanyMembersPage() {
   const [members, setMembers] = useState<any[]>([]);
@@ -60,6 +61,15 @@ export default function CompanyMembersPage() {
       return;
     }
 
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.capture("company_member_invited", {
+        company_id: companyId,
+        invite_role: "recruiter",
+      });
+    }
     alert("Invite sent (user will join after signup)");
     setEmail("");
   };

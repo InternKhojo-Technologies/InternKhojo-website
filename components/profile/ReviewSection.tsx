@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { Star, Check } from "lucide-react";
+import posthog from "posthog-js";
 
 export function ReviewSection({
   user,
@@ -134,6 +135,16 @@ export function ReviewSection({
         if (error) throw error;
       }
 
+      if (
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+        process.env.NEXT_PUBLIC_POSTHOG_HOST
+      ) {
+        posthog.capture("review_submitted", {
+          review_type: reviewType,
+          rating,
+          account_role: role,
+        });
+      }
       toast.success("Review posted successfully!", { id: t });
       setContent("");
       setDesignation("");
