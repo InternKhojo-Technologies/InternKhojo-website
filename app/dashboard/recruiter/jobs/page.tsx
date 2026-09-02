@@ -37,6 +37,7 @@ import {
   Heading3,
 } from "lucide-react";
 import { useRecruiter } from "../layout";
+import posthog from "posthog-js";
 
 interface QuestionItem {
   id: string;
@@ -290,6 +291,15 @@ export default function RecruiterJobsPage() {
       if (selectedJob?.id === job.id) {
         setSelectedJob({ ...selectedJob, status: newStatus });
       }
+      if (
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+        process.env.NEXT_PUBLIC_POSTHOG_HOST
+      ) {
+        posthog.capture("job_status_changed", {
+          job_id: job.id,
+          new_status: newStatus,
+        });
+      }
       showToast(`Job is now ${newStatus.toUpperCase()}`);
     }
   };
@@ -307,6 +317,12 @@ export default function RecruiterJobsPage() {
       setJobs((prev) => prev.filter((j) => j.id !== deleteTargetJob.id));
       if (selectedJob?.id === deleteTargetJob.id) {
         setSelectedJob(null);
+      }
+      if (
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+        process.env.NEXT_PUBLIC_POSTHOG_HOST
+      ) {
+        posthog.capture("job_deleted", { job_id: deleteTargetJob.id });
       }
       showToast("Job removed successfully");
     } catch (err) {
@@ -499,6 +515,17 @@ export default function RecruiterJobsPage() {
         prev.map((j) => (j.id === selectedJob.id ? updatedJob : j)),
       );
       setSelectedJob(updatedJob);
+      if (
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+        process.env.NEXT_PUBLIC_POSTHOG_HOST
+      ) {
+        posthog.capture("job_updated", {
+          job_id: selectedJob.id,
+          job_type: updatedPayload.job_type,
+          is_paid: updatedPayload.paid,
+          screening_question_count: formattedQuestions.length,
+        });
+      }
       setIsEditing(false);
       showToast("Job updated successfully!");
     } catch (err: any) {

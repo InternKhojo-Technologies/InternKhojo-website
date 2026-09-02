@@ -28,6 +28,7 @@ import {
   SearchableDropdown,
 } from "@/components/profile/ProfileFormFields";
 import { ReviewSection } from "@/components/profile/ReviewSection";
+import posthog from "posthog-js";
 
 // PRESETS
 const LOCAL_COLLEGES = [
@@ -357,6 +358,16 @@ export default function ProfilePage() {
       );
 
       if (pErr) throw pErr;
+      if (
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+        process.env.NEXT_PUBLIC_POSTHOG_HOST
+      ) {
+        posthog.capture("profile_saved", {
+          account_role: role,
+          profile_type: isRecruiter ? "recruiter" : "candidate",
+          skills_count: skills.length,
+        });
+      }
       window.dispatchEvent(new Event("profileUpdated"));
       toast.success("Profile fully synced", { id: t });
       setAvatarFile(null);

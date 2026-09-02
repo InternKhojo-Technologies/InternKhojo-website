@@ -4,6 +4,7 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
+import posthog from "posthog-js";
 
 export default function CompanyPage() {
   const [name, setName] = useState("");
@@ -83,6 +84,12 @@ export default function CompanyPage() {
       console.error(memberError);
     }
 
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.capture("company_created", { company_id: company.id });
+    }
     alert("Company created successfully!");
     window.location.href = "/dashboard/recruiter";
   };

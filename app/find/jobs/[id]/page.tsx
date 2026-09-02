@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   UserCheck,
 } from "lucide-react";
+import posthog from "posthog-js";
 
 function timeAgo(dateString: string) {
   const now = new Date();
@@ -572,6 +573,16 @@ function ApplyButton({
     setLoading(false);
     if (error) alert(error.message);
     else {
+      if (
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+        process.env.NEXT_PUBLIC_POSTHOG_HOST
+      ) {
+        posthog.capture("job_application_submitted", {
+          job_id: job.id,
+          job_type: job.job_type || "unknown",
+          has_screening_questions: Boolean(job.questions?.length),
+        });
+      }
       alert("Applied successfully!");
       setHasApplied(true);
       setOpen(false);

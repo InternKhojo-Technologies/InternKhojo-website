@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Container from "./ui/Container";
 import { supabase } from "@/lib/supabase";
 import { createAvatar } from "@dicebear/core";
 import { thumbs } from "@dicebear/collection";
 import { useRouter, usePathname } from "next/navigation";
+import posthog from "posthog-js";
 import {
   Home,
   Search,
@@ -27,6 +28,7 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const identifiedUserId = useRef<string | null>(null);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -81,6 +83,10 @@ export default function Navbar() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
+        if (identifiedUserId.current) {
+          posthog.reset();
+          identifiedUserId.current = null;
+        }
         clearLocalState();
       } else {
         getUser();
@@ -136,6 +142,17 @@ export default function Navbar() {
       return;
     }
 
+    if (identifiedUserId.current !== authUser.id) {
+      if (identifiedUserId.current) {
+        posthog.reset();
+      }
+
+      posthog.identify(authUser.id, {
+        ...(authUser.email ? { email: authUser.email } : {}),
+      });
+      identifiedUserId.current = authUser.id;
+    }
+
     setUser(authUser);
     localStorage.setItem("ik_user", JSON.stringify(authUser));
 
@@ -145,6 +162,7 @@ export default function Navbar() {
       .eq("id", authUser.id)
       .single();
     if (profileData) {
+      posthog.setPersonProperties({ role: profileData.role });
       setProfile(profileData);
       localStorage.setItem("ik_profile", JSON.stringify(profileData));
       setAvatar(

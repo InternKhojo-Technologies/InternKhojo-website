@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Loader2, KeyRound, Sparkles } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Link from "next/link";
+import posthog from "posthog-js";
 
 export default function LoginContent() {
   const router = useRouter();
@@ -157,6 +158,14 @@ export default function LoginContent() {
       return;
     }
 
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.capture("user_logged_in", {
+        authentication_method: "password",
+      });
+    }
     toast.success("Welcome back");
     router.refresh();
   };

@@ -26,6 +26,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { useRecruiter } from "../layout";
+import posthog from "posthog-js";
 
 export default function RecruiterApplicationsPage() {
   return (
@@ -145,6 +146,17 @@ function ApplicationsContent() {
       setApplications(oldApps);
       alert("Status update failed.");
       return;
+    }
+
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.capture("application_stage_updated", {
+        application_id: appId,
+        job_id: currentApp.job_id,
+        new_stage: stage,
+      });
     }
 
     const targetCandidateId = currentApp.user_id;
