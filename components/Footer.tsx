@@ -68,10 +68,14 @@ export default function Footer() {
 
   const socialLinks = [
     { Icon: XIcon, href: "https://x.com", label: "X" },
-    { Icon: Instagram, href: "https://instagram.com", label: "Instagram" },
+    {
+      Icon: Instagram,
+      href: "https://www.instagram.com/internkhojo/",
+      label: "Instagram",
+    },
     {
       Icon: Linkedin,
-      href: "https://linkedin.com/internkhojo",
+      href: "https://linkedin.com/company/internkhojo",
       label: "LinkedIn",
     },
     { Icon: Youtube, href: "https://youtube.com", label: "YouTube" },
