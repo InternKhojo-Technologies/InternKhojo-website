@@ -328,7 +328,7 @@ export default function CandidateDashboard() {
             <section className="bg-white border border-gray-100 rounded-[2.5rem] p-8 shadow-sm">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400  ">
-                  Vault Library
+                  Resume Vault
                 </h3>
                 <input
                   type="file"
@@ -403,7 +403,7 @@ export default function CandidateDashboard() {
             <section className="bg-white border border-gray-100 rounded-[2.5rem] p-8 shadow-sm">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400  ">
-                  Process Pipeline
+                  Applied Roles
                 </h3>
                 <div className="relative">
                   <button
