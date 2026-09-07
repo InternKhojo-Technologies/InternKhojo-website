@@ -1,6 +1,7 @@
 import "./globals.css";
 
 import { Analytics } from "@vercel/analytics/next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { GeistSans } from "geist/font/sans";
 import { Toaster } from "react-hot-toast";
 
@@ -64,6 +65,7 @@ export default function RootLayout({
 
         <Footer />
         <Analytics />
+        <GoogleAnalytics gaId="G-ZX9X0CC0FP" />
       </body>
     </html>
   );
