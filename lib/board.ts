@@ -37,7 +37,9 @@ export function getOpportunityType(job: BoardOpportunity): OpportunityType {
 
 export function isPaidOpportunity(job: BoardOpportunity): boolean {
   if (typeof job.paid === "boolean") return job.paid;
-  const s = String(job.stipend ?? job.salary ?? "").trim().toLowerCase();
+  const s = String(job.stipend ?? job.salary ?? "")
+    .trim()
+    .toLowerCase();
   if (!s) return false;
   return s !== "0" && s !== "unpaid" && s !== "unpaid exposure";
 }
@@ -55,9 +57,7 @@ export function stripHtml(html?: string | null, maxChars = 220): string {
 
 export function timeAgo(dateString?: string | null): string {
   if (!dateString) return "Recently";
-  const diff = Math.floor(
-    (Date.now() - new Date(dateString).getTime()) / 1000,
-  );
+  const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
   if (Number.isNaN(diff) || diff < 0) return "Recently";
   if (diff < 3600) {
     const m = Math.floor(diff / 60);
@@ -90,12 +90,9 @@ export function payLabel(job: BoardOpportunity): string {
 // and never throw on odd input.
 // ---------------------------------------------------------------------------
 
-const EMAIL_RE =
-  /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-const URL_RE =
-  /https?:\/\/[^\s"'<>()]+/g;
-const PHONE_CANDIDATE_RE =
-  /(\+\d[\d\s\-()]{7,}\d|\b\d[\d\s\-()]{8,}\d\b)/g;
+const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const URL_RE = /https?:\/\/[^\s"'<>()]+/g;
+const PHONE_CANDIDATE_RE = /(\+\d[\d\s\-()]{7,}\d|\b\d[\d\s\-()]{8,}\d\b)/g;
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|svg|bmp|ico)(\?|#|$)/i;
 const APPLY_HINT_RE =
   /apply|application|form|career|job|vacancy|opening|hire|register|greenhouse|lever\.co|workable|ashby|zoho|darwinbox|naukri|linkedin\.com\/jobs|indeed|foundit|cutshort|wellfound/i;
@@ -130,7 +127,9 @@ export function extractEmails(job: BoardOpportunity): string[] {
 }
 
 /** All unique phone numbers mentioned in the brief (digits-normalized). */
-export function extractPhones(job: BoardOpportunity): { display: string; tel: string }[] {
+export function extractPhones(
+  job: BoardOpportunity,
+): { display: string; tel: string }[] {
   try {
     const text = descriptionText(job);
     const candidates = text.match(PHONE_CANDIDATE_RE) ?? [];
@@ -265,7 +264,9 @@ export function buildPostFaq(
 
   const channels: string[] = [];
   if (contact.officialApplyUrl)
-    channels.push(`the official application page (${applyHostLabel(contact.officialApplyUrl)})`);
+    channels.push(
+      `the official application page (${applyHostLabel(contact.officialApplyUrl)})`,
+    );
   if (contact.emails.length > 0)
     channels.push(`email (${contact.emails.join(", ")})`);
   if (contact.phones.length > 0)

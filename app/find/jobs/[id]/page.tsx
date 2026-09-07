@@ -25,6 +25,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import posthog from "posthog-js";
+import { toJobPostingJsonLd } from "@/lib/board";
 
 function timeAgo(dateString: string) {
   const now = new Date();
@@ -147,80 +148,91 @@ export default function JobDetailPage() {
       </div>
     );
 
-  return (
-    <div className="bg-[#fcfcfc] min-h-screen text-black pb-28 select-none antialiased">
-      <div className="max-w-[1140px] mx-auto px-6">
-        {/* Editorial Navigation */}
-        <div className="pt-14 mb-16 flex items-center justify-between border-b border-slate-100 pb-6">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white hover:border-black transition-all active:scale-95 cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Return
-          </button>
-          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-            Active Opportunity // {String(jobId || "").slice(0, 8)}
-          </div>
-        </div>
+  const jobUrl = `https://internkhojo.com/find/jobs/${job.id}`;
+  const jobJsonLd = toJobPostingJsonLd(job, jobUrl);
 
-        {/* Studio Grid Split Architecture */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-          {/* LEFT COLUMN: CONTEXT METRICS */}
-          <div className="lg:col-span-8 space-y-14">
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                <div className="flex items-center gap-4.5">
-                  <div className="w-14 h-14 bg-white rounded-2xl border border-slate-200 flex items-center justify-center p-3 flex-shrink-0 shadow-sm">
-                    {job.companies?.logo_url ? (
-                      <img
-                        src={job.companies.logo_url}
-                        className="w-full h-full object-contain"
-                        alt="Logo"
-                      />
-                    ) : (
-                      <Building className="w-5 h-5 text-slate-400" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
-                      <span className="text-black font-bold">
-                        {job.companies?.name}
-                      </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-2.5 h-2.5" />{" "}
-                        {timeAgo(job.created_at)}
-                      </span>
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jobJsonLd),
+        }}
+      />
+
+      <div className="bg-[#fcfcfc] min-h-screen text-black pb-28 select-none antialiased">
+        <div className="max-w-[1140px] mx-auto px-6">
+          {/* Editorial Navigation */}
+          <div className="pt-14 mb-16 flex items-center justify-between border-b border-slate-100 pb-6">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white hover:border-black transition-all active:scale-95 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Return
+            </button>
+            <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+              Active Opportunity // {String(jobId || "").slice(0, 8)}
+            </div>
+          </div>
+
+          {/* Studio Grid Split Architecture */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            {/* LEFT COLUMN: CONTEXT METRICS */}
+            <div className="lg:col-span-8 space-y-14">
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                  <div className="flex items-center gap-4.5">
+                    <div className="w-14 h-14 bg-white rounded-2xl border border-slate-200 flex items-center justify-center p-3 flex-shrink-0 shadow-sm">
+                      {job.companies?.logo_url ? (
+                        <img
+                          src={job.companies.logo_url}
+                          className="w-full h-full object-contain"
+                          alt="Logo"
+                        />
+                      ) : (
+                        <Building className="w-5 h-5 text-slate-400" />
+                      )}
                     </div>
-                    <h1 className="text-3xl sm:text-4xl font-[1000] tracking-tighter uppercase leading-[0.95] text-slate-900">
-                      {job.title}
-                    </h1>
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
+                        <span className="text-black font-bold">
+                          {job.companies?.name}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5" />{" "}
+                          {timeAgo(job.created_at)}
+                        </span>
+                      </div>
+                      <h1 className="text-3xl sm:text-4xl font-[1000] tracking-tighter uppercase leading-[0.95] text-slate-900">
+                        {job.title}
+                      </h1>
+                    </div>
                   </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {job.skills?.map((skill: string, i: number) => (
+                    <span
+                      key={i}
+                      className="text-[10px] font-black uppercase bg-white px-3 py-1.5 rounded-lg border border-slate-200/60 text-slate-600 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                    >
+                      {skill}
+                    </span>
+                  ))}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1.5 pt-2">
-                {job.skills?.map((skill: string, i: number) => (
-                  <span
-                    key={i}
-                    className="text-[10px] font-black uppercase bg-white px-3 py-1.5 rounded-lg border border-slate-200/60 text-slate-600 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
+              {/* Description Card */}
+              <div className="space-y-4 border-t border-slate-100 pt-10">
+                <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 01 /
+                  Profile Outline
+                </h2>
 
-            {/* Description Card */}
-            <div className="space-y-4 border-t border-slate-100 pt-10">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 01 /
-                Profile Outline
-              </h2>
-
-              <div
-                className="text-sm text-slate-700 font-medium leading-relaxed max-w-2xl pl-3.5 border-l-2 border-slate-100
+                <div
+                  className="text-sm text-slate-700 font-medium leading-relaxed max-w-2xl pl-3.5 border-l-2 border-slate-100
                   [&_h1]:text-2xl [&_h1]:font-black [&_h1]:my-3 [&_h1]:text-slate-900 
                   [&_h2]:text-xl [&_h2]:font-bold [&_h2]:my-2 [&_h2]:text-slate-900 
                   [&_h3]:text-lg [&_h3]:font-bold [&_h3]:my-2 [&_h3]:text-slate-900 
@@ -229,158 +241,159 @@ export default function JobDetailPage() {
                   [&_li]:my-1 
                   [&_b]:font-black [&_strong]:font-black 
                   [&_u]:underline"
-                dangerouslySetInnerHTML={{
-                  __html:
-                    job.description ||
-                    "No mission brief specified for this opportunity window.",
-                }}
-              />
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      job.description ||
+                      "No mission brief specified for this opportunity window.",
+                  }}
+                />
+              </div>
+
+              {/* Documentation Hub */}
+              {resolvedDocUrl && (
+                <div className="space-y-4 border-t border-slate-100 pt-10">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 02
+                    / Documentation Repo
+                  </h3>
+
+                  <div
+                    onClick={() => setPreviewOpen(true)}
+                    className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-[#fafafa] hover:bg-white rounded-2xl border border-slate-100 hover:border-black transition-all duration-500 w-full text-left shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:scale-[1.01] cursor-pointer gap-4"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-red-600 shadow-sm flex-shrink-0 group-hover:bg-black group-hover:text-white group-hover:border-black transition-all duration-300">
+                        <FileText size={20} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                          Project Assignment Specifications
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                          Click container block to trigger preview
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-red-600 group-hover:text-black flex items-center gap-1 sm:pl-4 flex-shrink-0 group-hover:translate-x-1 transition-transform self-end sm:self-center">
+                      Launch Hub <ArrowUpRight size={13} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Documentation Hub */}
-            {resolvedDocUrl && (
-              <div className="space-y-4 border-t border-slate-100 pt-10">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-slate-900 rounded-sm" /> 02 /
-                  Documentation Repo
-                </h3>
+            {/* RIGHT COLUMN: ACTION BLOCK PANEL */}
+            <div className="lg:col-span-4 lg:sticky lg:top-24">
+              <div className="bg-white border border-slate-200/80 p-6 rounded-[24px] shadow-[0_24px_60px_rgba(0,0,0,0.02)] space-y-6">
+                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 pb-3.5 flex items-center justify-between">
+                  <span>Core Framework Details</span>
+                  <Zap className="w-3 h-3 text-red-600 fill-red-600" />
+                </div>
 
-                <div
-                  onClick={() => setPreviewOpen(true)}
-                  className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-[#fafafa] hover:bg-white rounded-2xl border border-slate-100 hover:border-black transition-all duration-500 w-full text-left shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:scale-[1.01] cursor-pointer gap-4"
-                >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-red-600 shadow-sm flex-shrink-0 group-hover:bg-black group-hover:text-white group-hover:border-black transition-all duration-300">
-                      <FileText size={20} />
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                    <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
+                      <Banknote size={15} />
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-black text-slate-900 uppercase tracking-tight">
-                        Project Assignment Specifications
+                    <div>
+                      <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                        Compensation
                       </p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                        Click container block to trigger preview
+                      <p className="text-sm font-black text-slate-900 tracking-tight">
+                        {job.stipend || job.salary || "Unpaid exposure"}
                       </p>
                     </div>
                   </div>
-                  <div className="text-[10px] font-black uppercase tracking-wider text-red-600 group-hover:text-black flex items-center gap-1 sm:pl-4 flex-shrink-0 group-hover:translate-x-1 transition-transform self-end sm:self-center">
-                    Launch Hub <ArrowUpRight size={13} />
+
+                  <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                    <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
+                      <MapPin size={15} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                        Location Scope
+                      </p>
+                      <p className="text-sm font-black text-slate-900 uppercase tracking-tight">
+                        {job.location || "Remote Bounds"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                    <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
+                      <Briefcase size={15} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                        Deployment Model
+                      </p>
+                      <p className="text-sm font-black text-slate-900 uppercase tracking-tight">
+                        {job.job_type || "Internship Slot"}
+                      </p>
+                    </div>
                   </div>
                 </div>
+
+                <div className="pt-2">
+                  <ApplyButton
+                    job={job}
+                    hasApplied={hasApplied}
+                    setHasApplied={setHasApplied}
+                    userRole={userRole}
+                  />
+                </div>
               </div>
-            )}
+            </div>
           </div>
+        </div>
 
-          {/* RIGHT COLUMN: ACTION BLOCK PANEL */}
-          <div className="lg:col-span-4 lg:sticky lg:top-24">
-            <div className="bg-white border border-slate-200/80 p-6 rounded-[24px] shadow-[0_24px_60px_rgba(0,0,0,0.02)] space-y-6">
-              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 pb-3.5 flex items-center justify-between">
-                <span>Core Framework Details</span>
-                <Zap className="w-3 h-3 text-red-600 fill-red-600" />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
-                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
-                    <Banknote size={15} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
-                      Compensation
-                    </p>
-                    <p className="text-sm font-black text-slate-900 tracking-tight">
-                      {job.stipend || job.salary || "Unpaid exposure"}
-                    </p>
-                  </div>
+        {/* Blueprint Document Iframe Modal */}
+        {previewOpen && resolvedDocUrl && (
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200"
+            onClick={() => setPreviewOpen(false)}
+          >
+            <div
+              className="bg-white w-full max-w-4xl h-[88vh] rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 border-b border-slate-100 bg-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-4 h-4 text-red-600" />
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-900">
+                    Blueprint Explorer
+                  </span>
                 </div>
-
-                <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
-                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
-                    <MapPin size={15} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
-                      Location Scope
-                    </p>
-                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                      {job.location || "Remote Bounds"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
-                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-800 shadow-sm flex-shrink-0">
-                    <Briefcase size={15} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
-                      Deployment Model
-                    </p>
-                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                      {job.job_type || "Internship Slot"}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={resolvedDocUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 bg-slate-50 hover:bg-black hover:text-white text-slate-600 rounded-lg transition-all text-[10px] font-black uppercase tracking-wider border border-slate-200 flex items-center gap-1.5"
+                  >
+                    <Download size={12} /> Download
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewOpen(false)}
+                    className="p-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg border border-slate-200 cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               </div>
-
-              <div className="pt-2">
-                <ApplyButton
-                  job={job}
-                  hasApplied={hasApplied}
-                  setHasApplied={setHasApplied}
-                  userRole={userRole}
+              <div className="flex-1 w-full bg-slate-50 relative">
+                <iframe
+                  src={`https://docs.google.com/gview?url=${encodeURIComponent(resolvedDocUrl)}&embedded=true`}
+                  className="w-full h-full border-none absolute inset-0 bg-slate-50"
                 />
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
-
-      {/* Blueprint Document Iframe Modal */}
-      {previewOpen && resolvedDocUrl && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200"
-          onClick={() => setPreviewOpen(false)}
-        >
-          <div
-            className="bg-white w-full max-w-4xl h-[88vh] rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-slate-100 bg-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FileText className="w-4 h-4 text-red-600" />
-                <span className="text-xs font-black uppercase tracking-widest text-slate-900">
-                  Blueprint Explorer
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={resolvedDocUrl}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 bg-slate-50 hover:bg-black hover:text-white text-slate-600 rounded-lg transition-all text-[10px] font-black uppercase tracking-wider border border-slate-200 flex items-center gap-1.5"
-                >
-                  <Download size={12} /> Download
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setPreviewOpen(false)}
-                  className="p-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg border border-slate-200 cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 w-full bg-slate-50 relative">
-              <iframe
-                src={`https://docs.google.com/gview?url=${encodeURIComponent(resolvedDocUrl)}&embedded=true`}
-                className="w-full h-full border-none absolute inset-0 bg-slate-50"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 

@@ -57,10 +57,13 @@ export async function generateMetadata({
       robots: { index: false, follow: false },
     };
   }
-  const type = String(job.job_type ?? "").toLowerCase().includes("intern")
+  const type = String(job.job_type ?? "")
+    .toLowerCase()
+    .includes("intern")
     ? "internship"
     : "job";
-  const summary = stripHtml(job.description, 155) || `${job.title} — open ${type} post.`;
+  const summary =
+    stripHtml(job.description, 155) || `${job.title} — open ${type} post.`;
   return {
     title: `${job.title} (${type === "internship" ? "Internship" : "Job"}) — Bulletin`,
     description: `${summary} Location: ${job.location || "Remote"}. Pay: ${payLabel(job)}.`,
@@ -71,7 +74,7 @@ export async function generateMetadata({
       url: `${SITE_URL}/board/${job.id}`,
       title: `${job.title} — ${type === "internship" ? "Internship" : "Job"} post`,
       description: summary,
-      siteName: "Opportunities Bulletin",
+      siteName: "InternKhojo — Opportunities Bulletin",
     },
     twitter: {
       card: "summary",
@@ -118,7 +121,11 @@ export default async function BoardDetailPage({
 
   const jobJsonLd = {
     ...toJobPostingJsonLd(job, url),
-    identifier: { "@type": "PropertyValue", name: "bulletin-id", value: job.id },
+    identifier: {
+      "@type": "PropertyValue",
+      name: "bulletin-id",
+      value: job.id,
+    },
     hiringOrganization: {
       "@type": "Organization",
       name: job.companies?.name ?? "Hiring organization",
@@ -130,7 +137,12 @@ export default async function BoardDetailPage({
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-      { "@type": "ListItem", position: 2, name: "Bulletin", item: `${SITE_URL}/board` },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Bulletin",
+        item: `${SITE_URL}/board`,
+      },
       { "@type": "ListItem", position: 3, name: job.title, item: url },
     ],
   };
@@ -168,7 +180,11 @@ export default async function BoardDetailPage({
     },
     { label: "Source", value: post.source ?? "Open web", icon: ExternalLink },
     { label: "Compensation", value: payLabel(job), icon: Banknote },
-    { label: "Location", value: String(job.location ?? "Remote"), icon: MapPin },
+    {
+      label: "Location",
+      value: String(job.location ?? "Remote"),
+      icon: MapPin,
+    },
     {
       label: "Deadline",
       value: job.deadline
@@ -209,7 +225,10 @@ export default async function BoardDetailPage({
       />
 
       {/* Glow backdrop — static, no per-frame JS */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10"
+      >
         <div className="relative mx-auto h-[420px] w-full max-w-4xl">
           <div
             className={`absolute -top-28 left-1/2 h-[320px] w-[620px] -translate-x-1/2 rounded-full blur-2xl ${
@@ -323,21 +342,26 @@ export default async function BoardDetailPage({
                           : "bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900"
                       }`}
                     />
-                    <span aria-hidden className="absolute inset-0 bg-gradient-to-b from-white/25 via-transparent to-black/10" />
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 bg-gradient-to-b from-white/25 via-transparent to-black/10"
+                    />
                     <span className="relative">{initial}</span>
                   </span>
                 )}
               </div>
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                  <span className="text-slate-900">
-                    {orgName}
+                  <span className="text-slate-900">{orgName}</span>
+                  <span aria-hidden className="text-slate-300">
+                    •
                   </span>
-                  <span aria-hidden className="text-slate-300">•</span>
                   <span className="inline-flex items-center gap-1">
                     <MapPin size={11} /> {job.location || "Remote"}
                   </span>
-                  <span aria-hidden className="text-slate-300">•</span>
+                  <span aria-hidden className="text-slate-300">
+                    •
+                  </span>
                   <span className="inline-flex items-center gap-1">
                     <Clock size={11} /> {timeAgo(job.created_at)}
                   </span>
@@ -354,7 +378,10 @@ export default async function BoardDetailPage({
                 <h2 className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
                   Specifications
                 </h2>
-                <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+                <span
+                  aria-hidden
+                  className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent"
+                />
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {specs.map((s) => {
@@ -385,7 +412,10 @@ export default async function BoardDetailPage({
                   <h2 className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
                     Skills
                   </h2>
-                  <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+                  <span
+                    aria-hidden
+                    className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent"
+                  />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {job.skills.map((s, i) => (
@@ -400,12 +430,18 @@ export default async function BoardDetailPage({
               </section>
             )}
 
-            <section aria-label="Role brief" className="mt-8 border-t border-slate-100 pt-6">
+            <section
+              aria-label="Role brief"
+              className="mt-8 border-t border-slate-100 pt-6"
+            >
               <div className="flex items-center gap-3">
                 <h2 className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
                   Full brief
                 </h2>
-                <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+                <span
+                  aria-hidden
+                  className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent"
+                />
               </div>
               <div
                 className="mt-3 max-w-none text-pretty text-sm leading-relaxed text-slate-700 [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-extrabold [&_h1]:tracking-tight [&_h1]:text-slate-900 [&_h2]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-slate-900 [&_h3]:my-2 [&_h3]:text-lg [&_h3]:font-bold [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6"
@@ -418,12 +454,18 @@ export default async function BoardDetailPage({
             </section>
 
             {/* How to apply — every channel on one place */}
-            <section aria-label="How to apply" className="mt-8 border-t border-slate-100 pt-6">
+            <section
+              aria-label="How to apply"
+              className="mt-8 border-t border-slate-100 pt-6"
+            >
               <div className="flex items-center gap-3">
                 <h2 className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
                   How to apply
                 </h2>
-                <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+                <span
+                  aria-hidden
+                  className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent"
+                />
               </div>
               <div className="mt-3 grid gap-2">
                 {contact.officialApplyUrl && (
@@ -497,12 +539,18 @@ export default async function BoardDetailPage({
             </section>
 
             {/* Quick answers — quotable facts for search + AI answers */}
-            <section aria-label="Quick answers" className="mt-8 border-t border-slate-100 pt-6">
+            <section
+              aria-label="Quick answers"
+              className="mt-8 border-t border-slate-100 pt-6"
+            >
               <div className="flex items-center gap-3">
                 <h2 className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
                   Quick answers
                 </h2>
-                <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+                <span
+                  aria-hidden
+                  className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent"
+                />
               </div>
               <div className="mt-3 space-y-2">
                 {faqs.map((f) => (
@@ -554,7 +602,10 @@ export default async function BoardDetailPage({
               <h2 className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
                 More open posts
               </h2>
-              <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
+              <span
+                aria-hidden
+                className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent"
+              />
             </div>
             <ul className="mt-3 grid gap-2 sm:grid-cols-2">
               {related.map((r) => (
@@ -567,8 +618,7 @@ export default async function BoardDetailPage({
                       {r.title}
                     </span>
                     <span className="mt-1 block font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
-                      {r.location || "Remote"} •{" "}
-                      {r.stipend || "See pay"} •{" "}
+                      {r.location || "Remote"} • {r.stipend || "See pay"} •{" "}
                       {timeAgo(r.created_at)}
                     </span>
                   </Link>
