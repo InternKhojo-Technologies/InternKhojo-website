@@ -39,7 +39,10 @@ export default function CompaniesLibrary() {
 
   const loadCompanies = async () => {
     try {
-      const { data } = await supabase.from("companies").select("*");
+      const { data } = await supabase
+        .from("companies")
+        .select("*")
+        .limit(200);
       if (data) {
         setCompanies(data);
       }
@@ -50,7 +53,7 @@ export default function CompaniesLibrary() {
 
   const filtered = useMemo(() => {
     return companies.filter((c) => {
-      const matchesSearch = c.name
+      const matchesSearch = (c.name || "")
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
       const matchesIndustry =

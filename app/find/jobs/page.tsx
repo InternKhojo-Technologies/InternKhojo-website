@@ -46,13 +46,19 @@ export default function JobsPage() {
 
   useEffect(() => {
     async function fetchJobs() {
-      const { data } = await supabase
-        .from("jobs")
-        .select(`*, companies(name, logo_url)`)
-        .eq("status", "open")
-        .order("created_at", { ascending: false });
-      setJobs(data || []);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from("jobs")
+          .select(`*, companies(name, logo_url)`)
+          .eq("status", "open")
+          .order("created_at", { ascending: false })
+          .limit(100);
+        setJobs(data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchJobs();
   }, []);
@@ -60,7 +66,7 @@ export default function JobsPage() {
   // Filter Computation Match Logic
   const filteredJobs = useMemo(() => {
     return jobs.filter((job: any) => {
-      const matchesTitle = job.title
+      const matchesTitle = (job.title || "")
         .toLowerCase()
         .includes(titleQuery.toLowerCase());
 
@@ -73,10 +79,14 @@ export default function JobsPage() {
         .toLowerCase()
         .includes(companyQuery.toLowerCase());
 
+      const stipendStr =
+        job.stipend === null || job.stipend === undefined
+          ? ""
+          : String(job.stipend);
       const isPaid =
-        job.stipend &&
-        job.stipend !== "0" &&
-        job.stipend.toLowerCase() !== "unpaid";
+        stipendStr !== "" &&
+        stipendStr !== "0" &&
+        stipendStr.toLowerCase() !== "unpaid";
 
       const matchesPay =
         payType === "all" ? true : payType === "paid" ? isPaid : !isPaid;
@@ -84,8 +94,9 @@ export default function JobsPage() {
       const matchesSkill =
         selectedSkill === ""
           ? true
-          : job.skills?.some((s: string) =>
-              s.toLowerCase().includes(selectedSkill.toLowerCase()),
+          : Array.isArray(job.skills) &&
+            job.skills.some((s: string) =>
+              String(s).toLowerCase().includes(selectedSkill.toLowerCase()),
             );
 
       return (
@@ -238,10 +249,14 @@ export default function JobsPage() {
         ) : filteredJobs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredJobs.map((job) => {
+              const stipendStr =
+                job.stipend === null || job.stipend === undefined
+                  ? ""
+                  : String(job.stipend);
               const isPaid =
-                job.stipend &&
-                job.stipend !== "0" &&
-                job.stipend.toLowerCase() !== "unpaid";
+                stipendStr !== "" &&
+                stipendStr !== "0" &&
+                stipendStr.toLowerCase() !== "unpaid";
 
               return (
                 <Link
@@ -252,11 +267,18 @@ export default function JobsPage() {
                   <div>
                     <div className="flex justify-between items-start mb-5">
                       <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center p-2 group-hover:scale-105 transition-transform flex-shrink-0">
-                        <img
-                          src={job.companies?.logo_url}
-                          className="w-full h-full object-contain"
-                          alt=""
-                        />
+                        {job.companies?.logo_url ? (
+                          <img
+                            src={job.companies.logo_url}
+                            className="w-full h-full object-contain"
+                            alt=""
+                          />
+                        ) : (
+                          <Building2
+                            size={18}
+                            className="text-slate-300"
+                          />
+                        )}
                       </div>
                       <button
                         type="button"

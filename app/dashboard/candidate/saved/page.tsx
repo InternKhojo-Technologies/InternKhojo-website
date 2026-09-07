@@ -74,7 +74,7 @@ export default function SavedJobsPage() {
       ) {
         posthog.capture("saved_job_removed", { job_id: jobId });
       }
-      setJobs(jobs.filter((job) => job.id !== jobId));
+      setJobs((prev) => prev.filter((job) => job.id !== jobId));
     }
   };
 
@@ -92,8 +92,10 @@ export default function SavedJobsPage() {
   const filteredJobs = useMemo(() => {
     return jobs.filter(
       (job) =>
-        job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.companies?.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        (job.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (job.companies?.name || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()),
     );
   }, [searchQuery, jobs]);
 
@@ -150,7 +152,10 @@ export default function SavedJobsPage() {
                   {user?.email}
                 </p>
               </div>
-              <button className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-zinc-600 hover:bg-zinc-50 rounded-lg transition-colors">
+              <button
+                onClick={() => router.push("/profile")}
+                className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-zinc-600 hover:bg-zinc-50 rounded-lg transition-colors"
+              >
                 <User size={14} /> Profile Settings
               </button>
               <button
@@ -181,15 +186,15 @@ export default function SavedJobsPage() {
           </button>
         </header>
 
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
-          <div className="grid grid-cols-[1fr_200px_140px_100px] px-6 py-3 bg-zinc-50/50 border-b border-zinc-200/60 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+        <div className="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-x-auto">
+          <div className="grid grid-cols-[1fr_200px_140px_100px] px-6 py-3 bg-zinc-50/50 border-b border-zinc-200/60 text-[10px] font-black uppercase tracking-widest text-zinc-400 min-w-[640px]">
             <span>Role</span>
             <span>Organization</span>
             <span>Compensation</span>
             <span className="text-right">Action</span>
           </div>
 
-          <div className="divide-y divide-zinc-100">
+          <div className="divide-y divide-zinc-100 min-w-[640px]">
             {filteredJobs.length === 0 ? (
               <div className="py-24 text-center">
                 <Inbox size={24} className="mx-auto text-zinc-200 mb-3" />

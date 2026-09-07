@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
@@ -27,7 +25,13 @@ export default function DashboardPage() {
 
     if (!apps) return;
 
-    const jobIds = apps.map((a) => a.job_id);
+    const jobIds = apps.map((a) => a.job_id).filter(Boolean);
+
+    // Supabase rejects `.in()` with an empty list — skip the second query.
+    if (jobIds.length === 0) {
+      setApplications(apps);
+      return;
+    }
 
     const { data: jobs } = await supabase
       .from("jobs")
@@ -47,15 +51,19 @@ export default function DashboardPage() {
   return (
     <div className="bg-[#F9FAFB] min-h-screen flex flex-col">
 
-      <Navbar />
-
-      <div className="max-w-5xl mx-auto px-6 pt-20 pb-20">
+      <div className="max-w-5xl mx-auto px-6 pt-20 pb-20 w-full">
 
         <h1 className="text-3xl font-bold">
           Dashboard
         </h1>
 
         <div className="mt-8 space-y-4">
+
+          {applications.length === 0 && (
+            <p className="text-gray-500">
+              You haven&apos;t applied to any jobs yet.
+            </p>
+          )}
 
           {applications.map((app) => (
 
@@ -94,8 +102,6 @@ export default function DashboardPage() {
         </div>
 
       </div>
-
-      <Footer />
 
     </div>
   );

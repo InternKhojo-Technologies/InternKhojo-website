@@ -35,6 +35,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Home", href: "/", icon: Home },
+    { name: "Board", href: "/board", icon: LayoutDashboard },
     { name: "Find", href: "/find", icon: Search },
     { name: "Hire", href: "/hire", icon: Briefcase },
     { name: "Mentor", href: "/mentor", icon: GraduationCap },
@@ -62,21 +63,36 @@ export default function Navbar() {
     total > 0 ? Math.round(((total - checklist.length) / total) * 100) : 0;
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
+    // rAF-throttled + passive: avoids scheduling work for every scroll event.
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 10);
+        ticking = false;
+      });
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // SESSION CACHE & AUTH
   useEffect(() => {
-    const cachedUser = localStorage.getItem("ik_user");
-    const cachedProfile = localStorage.getItem("ik_profile");
+    try {
+      const cachedUser = localStorage.getItem("ik_user");
+      const cachedProfile = localStorage.getItem("ik_profile");
 
-    if (cachedUser) setUser(JSON.parse(cachedUser));
-    if (cachedProfile) {
-      const p = JSON.parse(cachedProfile);
-      setProfile(p);
-      if (p.avatar_url) setAvatar(p.avatar_url);
+      if (cachedUser) setUser(JSON.parse(cachedUser));
+      if (cachedProfile) {
+        const p = JSON.parse(cachedProfile);
+        setProfile(p);
+        if (p.avatar_url) setAvatar(p.avatar_url);
+      }
+    } catch {
+      localStorage.removeItem("ik_user");
+      localStorage.removeItem("ik_profile");
     }
 
     getUser(); // background refresh
@@ -175,7 +191,8 @@ export default function Navbar() {
       .from("notifications_website")
       .select("*")
       .eq("user_id", authUser.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(50);
     setNotifications(notifData || []);
   };
 
@@ -214,7 +231,7 @@ export default function Navbar() {
   );
   const earlier = notifications.filter(
     (n) =>
-      n.created_at &&
+      !n.created_at ||
       new Date(n.created_at).toDateString() !== new Date().toDateString(),
   );
 

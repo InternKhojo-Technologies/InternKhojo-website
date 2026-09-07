@@ -136,7 +136,7 @@ export default function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="w-10 h-10 md:w-11 md:md:h-11 flex items-center justify-center bg-white/[0.03] border border-white/[0.08] rounded-full hover:bg-red-600 hover:border-red-600 text-gray-400 hover:text-white transition-all duration-300 shadow-lg hover:shadow-red-600/20 backdrop-blur-sm"
+                    className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center bg-white/[0.03] border border-white/[0.08] rounded-full hover:bg-red-600 hover:border-red-600 text-gray-400 hover:text-white transition-all duration-300 shadow-lg hover:shadow-red-600/20 backdrop-blur-sm"
                   >
                     <Icon size={18} />
                   </Link>

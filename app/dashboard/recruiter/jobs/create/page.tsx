@@ -89,14 +89,31 @@ export default function CreateJobPage() {
   }>({ show: false, message: "", type: "success" });
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     securityCheck();
+    // Segregated entry: /create?type=job preselects full-time,
+    // /create?type=internship preselects internship.
+    try {
+      const preset = new URLSearchParams(window.location.search)
+        .get("type")
+        ?.toLowerCase();
+      if (preset === "job" || preset === "full-time") setWorkType("full-time");
+      else if (preset === "internship" || preset === "intern")
+        setWorkType("internship");
+    } catch {
+      /* ignore */
+    }
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
   }, []);
 
   const triggerCustomToast = (message: string, type: "success" | "error") => {
     setCustomToast({ show: true, message, type });
-    setTimeout(() => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
       setCustomToast((prev) => ({ ...prev, show: false }));
     }, 4000);
   };

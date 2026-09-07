@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import {
+  createFluidField,
+  scatterFluid,
+  stepFluid,
+  defaultFluidOptions,
+  type CursorBoat,
+} from "@/lib/fluid-field";
 
 const tags = [
   "AI",
@@ -122,134 +129,142 @@ const tags = [
   "Languages",
 ];
 
-type Item = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-};
-
-function rand(min: number, max: number) {
-  return Math.random() * (max - min) + min;
-}
+// Motion tunables.
+const HOME_RANGE_X = 600;
+const HOME_RANGE_Y = 300;
+const SCATTER_DELAY_MS = 300;
+// Boat smoothing base: per-frame lerp = 1 - 0.82^dtSteps (≈0.18 at 60fps).
+const BOAT_SMOOTH_BASE = 0.82;
 
 export default function Hero() {
-  const items = useRef<Item[]>([]);
   const container = useRef<HTMLDivElement>(null);
+  const section = useRef<HTMLDivElement>(null);
+  // Raw (unsmoothed) cursor, center-relative like the pill coordinates.
   const mouse = useRef({ x: 0, y: 0 });
-  const started = useRef(false);
+  const visible = useRef(true);
 
-  // create tags
-
-  useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-
-    const arr: Item[] = [];
-
-    const spacing = 120;
-
-    tags.forEach(() => {
-      let x = 0;
-      let y = 0;
-      let safe = false;
-
-      while (!safe) {
-        x = rand(-600, 600);
-        y = rand(-300, 300);
-
-        safe = true;
-
-        for (const p of arr) {
-          const dx = p.x - x;
-          const dy = p.y - y;
-
-          if (Math.sqrt(dx * dx + dy * dy) < spacing) {
-            safe = false;
-            break;
-          }
-        }
-      }
-
-      arr.push({
-        x: 0,
-        y: 0,
-        vx: rand(-0.3, 0.3),
-        vy: rand(-0.3, 0.3),
-      });
-    });
-
-    items.current = arr;
-
-    // scatter after load
-
-    setTimeout(() => {
-      items.current.forEach((p) => {
-        p.x = rand(-600, 600);
-        p.y = rand(-300, 300);
-      });
-    }, 300);
-  }, []);
-
-  // mouse
-
+  // mouse (cheap ref write; loop reads it only while visible)
   useEffect(() => {
     const move = (e: MouseEvent) => {
-      mouse.current = {
-        x: e.clientX - window.innerWidth / 2,
-        y: e.clientY - window.innerHeight / 2,
-      };
+      if (!visible.current) return;
+      mouse.current.x = e.clientX - window.innerWidth / 2;
+      mouse.current.y = e.clientY - window.innerHeight / 2;
     };
 
-    window.addEventListener("mousemove", move);
+    window.addEventListener("mousemove", move, { passive: true });
 
     return () => window.removeEventListener("mousemove", move);
   }, []);
 
-  // animation
-
+  // animation — pills drift like objects on water; the smoothed cursor
+  // ("boat") leaves a directional wake that parts them.
   useEffect(() => {
-    let id: number;
+    const root = container.current;
+    if (!root) return;
 
-    const loop = () => {
-      const nodes = container.current?.children;
+    // One stable random home per tag (±600/±300), created once per mount.
+    const homes = new Float32Array(tags.length * 2);
+    for (let i = 0; i < tags.length; i++) {
+      homes[i * 2] = Math.random() * (HOME_RANGE_X * 2) - HOME_RANGE_X;
+      homes[i * 2 + 1] = Math.random() * (HOME_RANGE_Y * 2) - HOME_RANGE_Y;
+    }
+    const field = createFluidField(homes, defaultFluidOptions());
+    // createFluidField seeds positions at the homes — reset to the center so
+    // the pills start stacked (same intro as before); scatter follows.
+    field.pos.fill(0);
 
-      if (!nodes) return;
-
-      items.current.forEach((p, i) => {
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x > 650 || p.x < -650) p.vx *= -1;
-        if (p.y > 350 || p.y < -350) p.vy *= -1;
-
-        const dx = p.x - mouse.current.x;
-        const dy = p.y - mouse.current.y;
-
-        const d = Math.sqrt(dx * dx + dy * dy);
-
-        if (d < 140) {
-          p.x += dx * 0.06;
-          p.y += dy * 0.06;
-        }
-
-        const el = nodes[i] as HTMLElement;
-
+    // Cache the pill nodes once instead of reading .children every frame.
+    const nodes = Array.from(root.children) as HTMLElement[];
+    const paint = () => {
+      const pos = field.pos;
+      for (let i = 0; i < tags.length; i++) {
+        const el = nodes[i];
         if (el) {
-          el.style.transform = `translate(${p.x}px,${p.y}px)`;
+          el.style.transform = `translate3d(${pos[i * 2]}px,${pos[i * 2 + 1]}px,0)`;
         }
-      });
+      }
+    };
+    // Start stacked at the center (mostly hidden behind the headline glow),
+    // then scatter — same intro as before.
+    paint();
 
+    // Respect reduced motion: static scattered render, run no loop.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const scatterTimer = window.setTimeout(() => {
+        scatterFluid(field, HOME_RANGE_X, HOME_RANGE_Y);
+        paint();
+      }, SCATTER_DELAY_MS);
+      return () => window.clearTimeout(scatterTimer);
+    }
+
+    const scatterTimer = window.setTimeout(() => {
+      scatterFluid(field, HOME_RANGE_X, HOME_RANGE_Y);
+    }, SCATTER_DELAY_MS);
+
+    // Pause the loop while the hero is off-screen so scrolling stays smooth.
+    const host = section.current ?? root;
+    const io = new IntersectionObserver(
+      (entries) => {
+        visible.current = entries[0]?.isIntersecting ?? true;
+      },
+      { threshold: 0 },
+    );
+    io.observe(host);
+
+    // The single per-frame cursor object — reused so the loop allocates nothing.
+    const boat: CursorBoat = { x: 0, y: 0, vx: 0, vy: 0, speed: 0 };
+    let boatX = 0;
+    let boatY = 0;
+    let last = performance.now();
+
+    let id = 0;
+    const loop = (now: number) => {
       id = requestAnimationFrame(loop);
+      if (!visible.current || document.hidden) {
+        last = now;
+        return;
+      }
+
+      // Clamp the delta so backgrounding can't teleport the physics.
+      const dtMs = Math.min(Math.max(now - last, 8), 50);
+      last = now;
+      const dtSteps = Math.min(Math.max(dtMs / 16.667, 0.5), 2);
+
+      // Smooth the raw mouse like a boat: momentum, no teleporting.
+      // Lerp factor ≈ 0.18 at 60fps, normalized for variable dt.
+      const k = 1 - Math.pow(BOAT_SMOOTH_BASE, dtSteps);
+      const prevX = boatX;
+      const prevY = boatY;
+      boatX += (mouse.current.x - boatX) * k;
+      boatY += (mouse.current.y - boatY) * k;
+
+      // Per-step velocity in px-per-60fps-step units, plus scalar speed.
+      const vx = (boatX - prevX) / dtSteps;
+      const vy = (boatY - prevY) / dtSteps;
+      boat.x = boatX;
+      boat.y = boatY;
+      boat.vx = vx;
+      boat.vy = vy;
+      boat.speed = Math.sqrt(vx * vx + vy * vy);
+
+      stepFluid(field, boat, now, dtSteps);
+      paint();
     };
 
     id = requestAnimationFrame(loop);
 
-    return () => cancelAnimationFrame(id);
+    return () => {
+      window.clearTimeout(scatterTimer);
+      io.disconnect();
+      cancelAnimationFrame(id);
+    };
   }, []);
 
   return (
-    <div className="relative h-[100dvh] min-h-[600px] overflow-hidden bg-white">
+    <div
+      ref={section}
+      className="relative h-[100dvh] min-h-[600px] overflow-hidden bg-white"
+    >
       {/* text */}
 
       <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
@@ -262,7 +277,7 @@ export default function Hero() {
             lg:text-7xl
             font-bold
             text-center
-            whitespace-nowrap
+            sm:whitespace-nowrap
             pointer-events-none
             before:absolute
             before:inset-0
@@ -305,8 +320,6 @@ export default function Hero() {
 
               shadow-md
               shadow-black/15
-
-              transition
             "
           >
             {t}

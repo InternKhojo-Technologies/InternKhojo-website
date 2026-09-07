@@ -16,9 +16,11 @@ import {
 import { supabase } from "@/lib/supabase";
 
 function getRelativeTime(date: string) {
-  const diff = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000,
-  );
+  if (!date) return "";
+  const parsed = new Date(date).getTime();
+  if (Number.isNaN(parsed)) return "";
+  const diff = Math.floor((new Date().getTime() - parsed) / 1000);
+  if (diff < 0) return "Today";
   if (diff < 86400) return "Today";
   if (diff < 172800) return "Yesterday";
   return `${Math.floor(diff / 86400)}d ago`;
@@ -55,8 +57,6 @@ export default function FindPage() {
     let isMounted = true;
     async function fetchData() {
       try {
-        await new Promise((r) => setTimeout(r, 200));
-
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
@@ -67,7 +67,8 @@ export default function FindPage() {
             .select(`*, companies(name, logo_url)`)
             .eq("status", "open")
             .gte("created_at", threeDaysAgo.toISOString())
-            .order("created_at", { ascending: false }),
+            .order("created_at", { ascending: false })
+            .limit(50),
         ]);
 
         if (isMounted) {
@@ -77,6 +78,7 @@ export default function FindPage() {
         }
       } catch (err) {
         console.error(err);
+        if (isMounted) setLoading(false);
       }
     }
     fetchData();
@@ -88,25 +90,30 @@ export default function FindPage() {
   const filteredJobs = useMemo(() => {
     return jobs
       .filter((job: any) => {
-        const matchesTitle = job.title
+        const matchesTitle = (job.title || "")
           .toLowerCase()
           .includes(titleQuery.toLowerCase());
         const matchesLocation = (job.location || "")
           .toLowerCase()
           .includes(locationQuery.toLowerCase());
 
+        const stipendStr =
+          job.stipend === null || job.stipend === undefined
+            ? ""
+            : String(job.stipend);
         const isPaid =
-          job.stipend &&
-          job.stipend !== "0" &&
-          job.stipend.toLowerCase() !== "unpaid";
+          stipendStr !== "" &&
+          stipendStr !== "0" &&
+          stipendStr.toLowerCase() !== "unpaid";
         const matchesPay =
           payType === "all" ? true : payType === "paid" ? isPaid : !isPaid;
 
         const matchesSkill =
           selectedSkill === ""
             ? true
-            : job.skills?.some((s: string) =>
-                s.toLowerCase().includes(selectedSkill.toLowerCase()),
+            : Array.isArray(job.skills) &&
+              job.skills.some((s: string) =>
+                String(s).toLowerCase().includes(selectedSkill.toLowerCase()),
               );
 
         return matchesTitle && matchesLocation && matchesPay && matchesSkill;
@@ -236,10 +243,14 @@ export default function FindPage() {
               ))
             ) : filteredJobs.length > 0 ? (
               filteredJobs.map((job: any) => {
+                const stipendStr =
+                  job.stipend === null || job.stipend === undefined
+                    ? ""
+                    : String(job.stipend);
                 const isPaid =
-                  job.stipend &&
-                  job.stipend !== "0" &&
-                  job.stipend.toLowerCase() !== "unpaid";
+                  stipendStr !== "" &&
+                  stipendStr !== "0" &&
+                  stipendStr.toLowerCase() !== "unpaid";
                 return (
                   <Link
                     href={`/find/jobs/${job.id}`}
@@ -248,11 +259,17 @@ export default function FindPage() {
                   >
                     <div className="flex items-center gap-5">
                       <div className="w-12 h-12 bg-white rounded-xl border border-slate-100 flex items-center justify-center p-2 flex-shrink-0">
-                        <img
-                          src={job.companies?.logo_url}
-                          alt=""
-                          className="w-full h-full object-contain"
-                        />
+                        {job.companies?.logo_url ? (
+                          <img
+                            src={job.companies.logo_url}
+                            alt=""
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-sm font-black text-slate-300">
+                            {job.companies?.name?.[0] || "•"}
+                          </span>
+                        )}
                       </div>
                       <div>
                         <h3 className="font-bold text-lg group-hover:text-red-600 transition-colors leading-tight mb-1 uppercase tracking-tight">
@@ -273,8 +290,8 @@ export default function FindPage() {
                           >
                             <Banknote className="w-3 h-3" />
                             {isPaid
-                              ? job.stipend.match(/\d/)
-                                ? job.stipend
+                              ? /\d/.test(stipendStr)
+                                ? stipendStr
                                 : "PAID"
                               : "UNPAID"}
                           </span>
@@ -327,11 +344,17 @@ export default function FindPage() {
                   >
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 flex-shrink-0">
-                        <img
-                          src={company.logo_url}
-                          alt=""
-                          className="w-full h-full object-contain"
-                        />
+                        {company.logo_url ? (
+                          <img
+                            src={company.logo_url}
+                            alt=""
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <span className="w-full h-full flex items-center justify-center text-sm font-black text-slate-300 border border-slate-100 rounded-xl">
+                            {company.name?.[0] || "•"}
+                          </span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-lg text-slate-900 group-hover:text-red-600 leading-none mb-2 uppercase tracking-tight">

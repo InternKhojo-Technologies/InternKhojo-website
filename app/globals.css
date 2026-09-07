@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -66,5 +65,30 @@ body {
   }
   100% {
     opacity: 0;
+  }
+}
+
+/* Compositor-only infinite marquee (transform + opacity only, no JS ticks).
+   Track content must be exactly 2 identical halves; the -50% shift loops
+   seamlessly. Duration is set inline to preserve scroll speed. */
+@keyframes marquee-x {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-marquee-x {
+  animation-name: marquee-x;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-x {
+    animation: none;
   }
 }

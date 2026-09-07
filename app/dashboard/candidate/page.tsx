@@ -70,7 +70,9 @@ export default function CandidateDashboard() {
   useEffect(() => {
     setHasMounted(true);
     loadData();
-  }, [dateRange]); // Reload data when date range changes
+    // NOTE: dateRange only re-bins already-fetched applications client-side
+    // (see chartData), so it must not trigger a refetch here.
+  }, []);
 
   const loadData = async () => {
     try {
@@ -119,8 +121,7 @@ export default function CandidateDashboard() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const filePath = `${user?.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
+      const filePath = `${user?.id}/${Date.now()}_${file.name}`;const { error: uploadError } = await supabase.storage
         .from("resume")
         .upload(filePath, file);
       if (uploadError) throw uploadError;
@@ -148,6 +149,8 @@ export default function CandidateDashboard() {
       console.error("Upload Error:", error);
     } finally {
       setUploading(false);
+      // Reset so picking the same file again still fires onChange.
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 

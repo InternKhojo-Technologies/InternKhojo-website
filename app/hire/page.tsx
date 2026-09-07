@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -49,15 +49,33 @@ export default function GlobalHirePage() {
     msg: "",
     type: "success",
   });
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMounted(true);
     evaluateUser();
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
   }, []);
+
+  // Lock background scroll while the waitlist modal is forced open.
+  useEffect(() => {
+    if (!notifyModalOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [notifyModalOpen]);
 
   const triggerToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ show: true, msg, type });
-    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(
+      () => setToast((prev) => ({ ...prev, show: false })),
+      4000,
+    );
   };
 
   const evaluateUser = async () => {

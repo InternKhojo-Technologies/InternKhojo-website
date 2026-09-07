@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import Container from "./ui/Container";
 import { Quote, Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -11,9 +11,16 @@ export default function Reviews() {
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Below-the-fold section: defer queries until it's near the viewport.
+  const sectionRef = useRef<HTMLElement>(null);
+  const inView = useInView(sectionRef, { once: true });
+  const fetched = useRef(false);
+
   useEffect(() => {
+    if (!inView || fetched.current) return;
+    fetched.current = true;
     fetchReviews();
-  }, []);
+  }, [inView]);
 
   const fetchReviews = async () => {
     try {
@@ -23,7 +30,8 @@ export default function Reviews() {
         .from("reviews")
         .select("*")
         .gte("rating", 4)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(24);
 
       if (error) throw error;
 
@@ -32,27 +40,30 @@ export default function Reviews() {
           ...new Set(rawReviews.map((r: any) => r.user_id)),
         ].filter(Boolean);
 
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, avatar_url")
-          .in("id", userIds);
-
         const profileMap = new Map();
-        profiles?.forEach((p: any) => {
-          profileMap.set(p.id, p.avatar_url || "");
-        });
-
-        const { data: companies } = await supabase
-          .from("companies")
-          .select("owner_id, name")
-          .in("owner_id", userIds);
-
         const companyMap = new Map();
-        companies?.forEach((c: any) => {
-          if (c.owner_id) {
-            companyMap.set(c.owner_id, c.name || "");
-          }
-        });
+
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, avatar_url")
+            .in("id", userIds);
+
+          profiles?.forEach((p: any) => {
+            profileMap.set(p.id, p.avatar_url || "");
+          });
+
+          const { data: companies } = await supabase
+            .from("companies")
+            .select("owner_id, name")
+            .in("owner_id", userIds);
+
+          companies?.forEach((c: any) => {
+            if (c.owner_id) {
+              companyMap.set(c.owner_id, c.name || "");
+            }
+          });
+        }
 
         const enrichedReviews = rawReviews.map((rev: any) => ({
           ...rev,
@@ -105,7 +116,10 @@ export default function Reviews() {
         : reviews.slice(currentIndex, currentIndex + 3);
 
   return (
-    <section className="py-20 lg:py-28 bg-[#050505] relative overflow-hidden border-y border-white/5">
+    <section
+      ref={sectionRef}
+      className="py-20 lg:py-28 bg-[#050505] relative overflow-hidden border-y border-white/5"
+    >
       <Container>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-16">
           <div className="text-left">

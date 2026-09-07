@@ -22,7 +22,12 @@ export default function FindSection() {
 
   useEffect(() => {
     async function fetchJobs() {
-      const { data, error } = await supabase.from("jobs").select("*");
+      const { data, error } = await supabase
+        .from("jobs")
+        .select("*")
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+        .limit(12);
 
       if (error) {
         console.error(error);
@@ -54,11 +59,11 @@ export default function FindSection() {
             placeholder="Search roles (React, AI, Design...)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border rounded-full px-6 py-3 w-96"
+            className="border rounded-full px-6 py-3 w-full sm:w-96"
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-6 mt-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
           {loading ? (
             <p className="col-span-3 text-center text-gray-500">
               Loading jobs...

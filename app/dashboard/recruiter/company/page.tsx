@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import posthog from "posthog-js";
 
@@ -96,7 +94,6 @@ export default function CompanyPage() {
 
   return (
     <div className="bg-[#F9FAFB] min-h-screen flex flex-col">
-      <Navbar />
 
       <div className="max-w-3xl mx-auto px-6 pt-20 pb-20 w-full">
         <h1 className="text-3xl font-bold">Company Profile</h1>
@@ -134,7 +131,6 @@ export default function CompanyPage() {
         </div>
       </div>
 
-      <Footer />
     </div>
   );
 }

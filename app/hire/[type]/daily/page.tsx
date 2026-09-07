@@ -137,6 +137,7 @@ export default function ActiveGameArenaPage() {
   const [submissionLoading, setSubmissionLoading] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
   // Custom Toast State
@@ -160,12 +161,17 @@ export default function ActiveGameArenaPage() {
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, [trackType]);
 
   const triggerToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ show: true, msg, type });
-    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(
+      () => setToast((prev) => ({ ...prev, show: false })),
+      3000,
+    );
   };
 
   const fetchLiveChallengeMatrix = async () => {
@@ -174,7 +180,7 @@ export default function ActiveGameArenaPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/auth/login");
+        router.push("/login");
         return;
       }
 
@@ -345,7 +351,7 @@ export default function ActiveGameArenaPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {activeQuestion?.options.map((option: string, i: number) => {
+              {(activeQuestion?.options || []).map((option: string, i: number) => {
                 const isSelected = selectedAnswer === option;
                 return (
                   <button

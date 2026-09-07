@@ -32,6 +32,11 @@ const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
   ssr: false,
 });
 
+// Date-only "YYYY-MM-DD" strings parse as UTC midnight, which shifts the
+// calendar day for negative-offset timezones. Parsing as local midnight
+// keeps the intended day everywhere.
+const parseDay = (s: string) => new Date(`${s}T00:00:00`);
+
 export default function RecruiterDashboard() {
   const { profile } = useRecruiter();
   const [loading, setLoading] = useState(true);
@@ -98,9 +103,9 @@ export default function RecruiterDashboard() {
     range: { start: string; end: string },
     dataKey: string,
   ) => {
-    const start = new Date(range.start);
+    const start = parseDay(range.start);
     start.setHours(0, 0, 0, 0);
-    const end = new Date(range.end);
+    const end = parseDay(range.end);
     end.setHours(23, 59, 59, 999);
 
     const map: any = {};
@@ -129,8 +134,8 @@ export default function RecruiterDashboard() {
   );
 
   const displayStats = useMemo(() => {
-    const start = new Date(globalRange.start);
-    const end = new Date(globalRange.end);
+    const start = parseDay(globalRange.start);
+    const end = parseDay(globalRange.end);
     end.setHours(23, 59, 59, 999);
 
     const filteredApps = apps.filter(
@@ -451,7 +456,7 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
             className={activeTab === "start" ? "text-red-500" : "text-gray-400"}
           />
           <span>
-            {range.start ? format(new Date(range.start), "dd/MM/yy") : "Start"}
+            {range.start ? format(parseDay(range.start), "dd/MM/yy") : "Start"}
           </span>
         </button>
 
@@ -471,7 +476,7 @@ function DateRangePicker({ range, setRange, size = "md" }: any) {
             className={activeTab === "end" ? "text-red-500" : "text-gray-400"}
           />
           <span>
-            {range.end ? format(new Date(range.end), "dd/MM/yy") : "End"}
+            {range.end ? format(parseDay(range.end), "dd/MM/yy") : "End"}
           </span>
         </button>
       </div>

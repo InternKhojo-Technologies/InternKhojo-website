@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { send } from "process";
 import posthog from "posthog-js";
 
 export default function CompanyMembersPage() {

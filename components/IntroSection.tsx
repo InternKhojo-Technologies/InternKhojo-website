@@ -44,32 +44,36 @@ export default function IntroSection() {
       return;
     }
 
-    // 2. Fetch Real Database Counts
+    // 2. Fetch Real Database Counts (independent queries run concurrently)
     try {
       setLoading(true);
 
-      // Fetch Students / Candidate Count
-      const { count: candidateCount } = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true })
-        .eq("role", "candidate");
+      const [candidateRes, companyRes, jobsRes] = await Promise.all([
+        // Students / Candidate Count
+        supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .eq("role", "candidate"),
+        // Companies / Startups Count
+        supabase.from("companies").select("*", { count: "exact", head: true }),
+        // Jobs to calculate unique skillsets (bounded sample)
+        supabase.from("jobs").select("skills").limit(200),
+      ]);
 
-      // Fetch Companies / Startups Count
-      const { count: companyCount } = await supabase
-        .from("companies")
-        .select("*", { count: "exact", head: true });
-
-      // Fetch Jobs to calculate unique skillsets
-      const { data: jobsData } = await supabase.from("jobs").select("skills");
+      const { count: candidateCount } = candidateRes;
+      const { count: companyCount } = companyRes;
+      const { data: jobsData } = jobsRes;
 
       let uniqueSkillsCount = 0;
       if (jobsData) {
         const skillsSet = new Set<string>();
         jobsData.forEach((job) => {
           if (Array.isArray(job.skills)) {
-            job.skills.forEach((s: string) =>
-              skillsSet.add(s.trim().toUpperCase()),
-            );
+            job.skills.forEach((s: string) => {
+              if (typeof s === "string" && s.trim()) {
+                skillsSet.add(s.trim().toUpperCase());
+              }
+            });
           }
         });
         uniqueSkillsCount = skillsSet.size;

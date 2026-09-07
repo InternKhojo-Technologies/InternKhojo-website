@@ -15,6 +15,15 @@ const MANUAL_OVERRIDE = {
   },
 };
 
+// Marquee geometry: identical to the original — 10 copies travelling -50%
+// over 40s. The high copy count is load-bearing, not waste: with only a
+// handful of companies in the DB, fewer copies leave the strip mostly empty
+// and make the loop restart visibly pop. (Reduced from this once — caused the
+// exact gap/pop glitch — restored.)
+const MARQUEE_DURATION_S = 40;
+// 10 copies: an even count, so the -50% shift loops seamlessly.
+const MARQUEE_COPIES = 10;
+
 export default function Stats() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(!MANUAL_OVERRIDE.enabled);
@@ -24,6 +33,8 @@ export default function Stats() {
     hired: 0,
   });
 
+  // Fetch on mount (like the rest of the homepage): by the time the user
+  // scrolls here the strip is already populated — no pop-in.
   useEffect(() => {
     loadData();
   }, []);
@@ -36,42 +47,41 @@ export default function Stats() {
       try {
         setLoading(true);
 
-        const { count: candidateCount } = await supabase
-          .from("profiles")
-          .select("*", { count: "exact", head: true })
-          .eq("role", "candidate");
-
-        const { count: jobsCount } = await supabase
-          .from("jobs")
-          .select("*", { count: "exact", head: true });
-
-        const { data: hiredCount } = await supabase.rpc("get_hired_count");
+        // All four queries are independent — run them concurrently instead
+        // of awaiting four sequential round-trips.
+        const [candidateRes, jobsRes, hiredRes, companyRes] =
+          await Promise.all([
+            supabase
+              .from("profiles")
+              .select("*", { count: "exact", head: true })
+              .eq("role", "candidate"),
+            supabase.from("jobs").select("*", { count: "exact", head: true }),
+            supabase.rpc("get_hired_count"),
+            supabase
+              .from("companies")
+              .select("id, name, logo_url")
+              .not("logo_url", "is", null)
+              .limit(20),
+          ]);
 
         setStats({
-          candidates: candidateCount || 0,
-          openings: jobsCount || 0,
-          hired: Number(hiredCount) || 0,
+          candidates: candidateRes.count || 0,
+          openings: jobsRes.count || 0,
+          hired: Number(hiredRes.data) || 0,
         });
+        setCompanies(companyRes.data || []);
       } catch (error) {
         console.error("Error loading stats:", error);
       } finally {
         setLoading(false);
       }
     }
-
-    const { data: companyData } = await supabase
-      .from("companies")
-      .select("id, name, logo_url")
-      .not("logo_url", "is", null)
-      .limit(20);
-
-    setCompanies(companyData || []);
   };
 
-  // 🔥 10x REPEAT ARRAY FOR INFINITE ZOOM OUT CONTINUITY
-  const infiniteCompanies = useMemo(() => {
+  // Duplicate the list into identical halves for the seamless CSS loop.
+  const marqueeCompanies = useMemo(() => {
     if (!companies.length) return [];
-    return Array(10).fill(companies).flat();
+    return Array(MARQUEE_COPIES).fill(companies).flat();
   }, [companies]);
 
   return (
@@ -145,27 +155,25 @@ export default function Stats() {
         </p>
       </Container>
 
-      {/* INFINITE SEAMLESS LOGO STRIP */}
+      {/* INFINITE SEAMLESS LOGO STRIP (pure CSS — compositor only, no JS ticks) */}
       <div className="mt-16 overflow-hidden relative z-10 w-full bg-white/[0.02] py-10 border-y border-white/5">
-        {infiniteCompanies.length > 0 && (
-          <motion.div
-            className="flex w-max items-center"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{
-              ease: "linear",
-              duration: 40,
-              repeat: Infinity,
-            }}
+        {marqueeCompanies.length > 0 && (
+          <div
+            className="animate-marquee-x flex w-max items-center"
+            style={{ animationDuration: `${MARQUEE_DURATION_S}s` }}
           >
-            {infiniteCompanies.map((company, i) => (
+            {marqueeCompanies.map((company, i) => (
               <div
                 key={i}
+                aria-hidden={i >= companies.length}
                 className="flex items-center gap-6 mx-8 flex-shrink-0"
               >
                 {company.logo_url && (
                   <img
                     src={company.logo_url}
-                    alt={company.name}
+                    alt={i < companies.length ? company.name : ""}
+                    loading="lazy"
+                    decoding="async"
                     className="w-16 h-16 object-contain brightness-110"
                   />
                 )}
@@ -175,7 +183,7 @@ export default function Stats() {
                 <div className="ml-6 w-1.5 h-1.5 bg-red-600 rounded-full shadow-[0_0_8px_rgba(220,38,38,0.5)] flex-shrink-0" />
               </div>
             ))}
-          </motion.div>
+          </div>
         )}
 
         {/* Edge Fades for visual smoothness */}

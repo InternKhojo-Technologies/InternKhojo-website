@@ -57,7 +57,20 @@ export default function CompanyPage() {
         <div className="w-4 h-4 border-2 border-slate-100 border-t-black rounded-full animate-spin" />
       </div>
     );
-  if (!company) return null;
+  if (!company)
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+          Company reference not found.
+        </p>
+        <button
+          onClick={() => router.back()}
+          className="px-5 py-2.5 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#FF3B30] transition-colors"
+        >
+          Go Back
+        </button>
+      </div>
+    );
 
   return (
     <div className="bg-[#FCFCFC] min-h-screen text-slate-900 font-sans selection:bg-black selection:text-white pb-20">

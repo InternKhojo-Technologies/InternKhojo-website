@@ -117,18 +117,23 @@ export default function RecruiterJobsPage() {
   }>({});
 
   const router = useRouter();
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    loadData();
+    loadData(false);
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
   }, []);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
 
-  const loadData = async () => {
-    if (!loading) setRefreshing(true);
+  const loadData = async (manual = false) => {
+    if (manual) setRefreshing(true);
     try {
       const {
         data: { user },
@@ -173,7 +178,7 @@ export default function RecruiterJobsPage() {
         })),
       );
 
-      if (refreshing) showToast("Sync Complete");
+      if (manual) showToast("Sync Complete");
     } catch (err) {
       showToast("Sync Error", "error");
     } finally {
@@ -884,7 +889,7 @@ export default function RecruiterJobsPage() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <button
-            onClick={loadData}
+            onClick={() => loadData(true)}
             className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 cursor-pointer"
           >
             <RefreshCcw

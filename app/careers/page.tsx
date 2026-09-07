@@ -83,26 +83,28 @@ export default function CompanyCareersPage() {
 
       const isTech =
         job.category?.toLowerCase() === "tech" ||
-        job.skills?.some((s: string) =>
-          [
-            "react",
-            "node",
-            "python",
-            "ai",
-            "ml",
-            "mobile",
-            "backend",
-            "next.js",
-          ].includes(s.toLowerCase()),
-        );
+        (Array.isArray(job.skills) &&
+          job.skills.some((s: string) =>
+            [
+              "react",
+              "node",
+              "python",
+              "ai",
+              "ml",
+              "mobile",
+              "backend",
+              "next.js",
+            ].includes(String(s).toLowerCase()),
+          ));
       const matchesCategory =
         category === "all" ? true : category === "tech" ? isTech : !isTech;
 
       const matchesSearch =
-        job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.skills?.some((s: string) =>
-          s.toLowerCase().includes(searchQuery.toLowerCase()),
-        );
+        (job.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (Array.isArray(job.skills) &&
+          job.skills.some((s: string) =>
+            String(s).toLowerCase().includes(searchQuery.toLowerCase()),
+          ));
 
       return matchesType && matchesCategory && matchesSearch;
     });

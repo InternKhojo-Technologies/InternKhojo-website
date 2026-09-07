@@ -17,22 +17,22 @@ export default function HowToUse() {
     {
       title: "Discover Startups",
       desc: "Browse high-growth companies looking for fresh talent.",
-      img: "/illustrations/User 1.png",
+      img: "/illustrations/User 1.webp",
     },
     {
       title: "Connect & Apply",
       desc: "Skip the queues. Apply directly to founders.",
-      img: "/illustrations/User 2.png",
+      img: "/illustrations/User 2.webp",
     },
     {
       title: "Build Experience",
       desc: "Work on real-world projects that matter.",
-      img: "/illustrations/User 3.png",
+      img: "/illustrations/User 3.webp",
     },
     {
       title: "Grow Career",
       desc: "Transition from student to professional.",
-      img: "/illustrations/U4.png",
+      img: "/illustrations/U4.webp",
     },
   ];
 
@@ -40,22 +40,22 @@ export default function HowToUse() {
     {
       title: "Post Opportunities",
       desc: "Get your gig in front of 50k+ students.",
-      img: "/illustrations/R1.png",
+      img: "/illustrations/R1.webp",
     },
     {
       title: "Find Top Talent",
       desc: "Access a curated pool of hungry creators.",
-      img: "/illustrations/R2.png",
+      img: "/illustrations/R2.webp",
     },
     {
       title: "Hire Faster",
       desc: "Streamlined dashboard to manage applications.",
-      img: "/illustrations/R3.png",
+      img: "/illustrations/R3.webp",
     },
     {
       title: "Scale Your Team",
       desc: "Build a pipeline of talent for future growth.",
-      img: "/illustrations/R4.png",
+      img: "/illustrations/R4.webp",
     },
   ];
 
@@ -189,6 +189,7 @@ export default function HowToUse() {
                 key={i}
                 onMouseEnter={() => setActive(i)}
                 onMouseLeave={() => setActive(-1)}
+                onClick={() => setActive(i)}
                 animate={{
                   flex: active === i ? 2.5 : 1,
                 }}

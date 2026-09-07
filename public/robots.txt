@@ -46,6 +46,8 @@ Allow: /careers
 Allow: /trust
 Allow: /terms
 Allow: /privacy
+Allow: /board
+Allow: /board/*
 
 # ------------------------------------------------------------------------------
 # 2. DISALLOW PRIVATE APPLICANT DATA, DASHBOARDS, SETTINGS & APIS
