@@ -187,7 +187,9 @@ export default function CompaniesLibrary() {
                             {company.logo_url ? (
                               <img
                                 src={company.logo_url}
-                                alt=""
+                                alt={`${company.name} logo`}
+                                width={48}
+                                height={48}
                                 className="w-full h-full object-contain"
                               />
                             ) : (

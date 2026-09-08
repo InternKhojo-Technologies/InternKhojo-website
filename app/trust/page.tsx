@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "Trust & Safety Policy | InternKhojo",
+  title: "Trust & Safety Policy",
   description:
     "Learn about InternKhojo's safety standards, candidate protection rules, company expectations, and platform reporting guidelines.",
 };

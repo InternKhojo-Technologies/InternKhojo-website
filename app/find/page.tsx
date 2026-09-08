@@ -14,6 +14,11 @@ import {
   Filter,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { getCached, getCachedOr, setCached } from "@/lib/client-cache";
+
+const FIND_JOBS_CACHE_KEY = "ik:find-recent:v1";
+const FIND_COMPANIES_CACHE_KEY = "ik:find-companies:v1";
+const FIND_CACHE_TTL_MS = 90_000;
 
 function getRelativeTime(date: string) {
   if (!date) return "";
@@ -27,9 +32,19 @@ function getRelativeTime(date: string) {
 }
 
 export default function FindPage() {
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Stale-while-revalidate: seed from cache for instant back-navigation,
+  // then refresh in the background below.
+  const [companies, setCompanies] = useState<any[]>(
+    () => getCachedOr(FIND_COMPANIES_CACHE_KEY, FIND_CACHE_TTL_MS, []),
+  );
+  const [jobs, setJobs] = useState<any[]>(
+    () => getCachedOr(FIND_JOBS_CACHE_KEY, FIND_CACHE_TTL_MS, []),
+  );
+  const [loading, setLoading] = useState(
+    () =>
+      getCached(FIND_JOBS_CACHE_KEY, FIND_CACHE_TTL_MS) === null &&
+      getCached(FIND_COMPANIES_CACHE_KEY, FIND_CACHE_TTL_MS) === null,
+  );
 
   const [titleQuery, setTitleQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
@@ -74,6 +89,8 @@ export default function FindPage() {
         if (isMounted) {
           setCompanies(compRes.data || []);
           setJobs(jobRes.data || []);
+          setCached(FIND_COMPANIES_CACHE_KEY, compRes.data || []);
+          setCached(FIND_JOBS_CACHE_KEY, jobRes.data || []);
           setLoading(false);
         }
       } catch (err) {
@@ -262,7 +279,9 @@ export default function FindPage() {
                         {job.companies?.logo_url ? (
                           <img
                             src={job.companies.logo_url}
-                            alt=""
+                            alt={`${job.companies?.name ?? "Company"} logo`}
+                            width={48}
+                            height={48}
                             className="w-full h-full object-contain"
                           />
                         ) : (
@@ -347,7 +366,9 @@ export default function FindPage() {
                         {company.logo_url ? (
                           <img
                             src={company.logo_url}
-                            alt=""
+                            alt={`${company.name} logo`}
+                            width={48}
+                            height={48}
                             className="w-full h-full object-contain"
                           />
                         ) : (

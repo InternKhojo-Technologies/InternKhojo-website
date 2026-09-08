@@ -329,7 +329,9 @@ export default async function BoardDetailPage({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={job.companies.logo_url}
-                    alt=""
+                    alt={`${orgName} logo`}
+                    width={64}
+                    height={64}
                     className="h-full w-full object-contain"
                   />
                 ) : (

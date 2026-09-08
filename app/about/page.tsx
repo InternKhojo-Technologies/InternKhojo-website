@@ -2,19 +2,19 @@ import type { Metadata } from "next";
 import AboutPageClient from "./AboutPageClient";
 
 export const metadata: Metadata = {
-  title: "About Us | InternKhojo — India's Internship Platform",
+  title: "About Us — India's Internship Platform",
   description:
     "InternKhojo connects students with vetted internship opportunities across India. Free for students, curated by our team, backed by direct mentorship.",
   alternates: {
-    canonical: "https://www.internkhojo.com/about",
+    canonical: "https://internkhojo.com/about",
   },
   openGraph: {
     title: "About Us | InternKhojo — India's Internship Platform",
     description:
       "InternKhojo connects students with vetted internship opportunities across India. Free for students, curated by our team, backed by direct mentorship.",
-    url: "https://www.internkhojo.com/about",
+    url: "https://internkhojo.com/about",
     siteName: "InternKhojo",
-    images: ["https://www.internkhojo.com/og-image.jpg"],
+    images: ["https://internkhojo.com/opengraph-image"],
     type: "website",
   },
   twitter: {
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     title: "About Us | InternKhojo — India's Internship Platform",
     description:
       "InternKhojo connects students with vetted internship opportunities across India. Free for students, curated by our team, backed by direct mentorship.",
-    images: ["https://www.internkhojo.com/og-image.jpg"],
+    images: ["https://internkhojo.com/opengraph-image"],
   },
 };
 

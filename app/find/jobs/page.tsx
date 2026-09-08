@@ -14,11 +14,21 @@ import {
   Building2,
 } from "lucide-react";
 import Link from "next/link";
+import { getCached, getCachedOr, setCached } from "@/lib/client-cache";
+
+const JOBS_CACHE_KEY = "ik:find-jobs-list:v1";
+const JOBS_CACHE_TTL_MS = 90_000;
 
 export default function JobsPage() {
   const router = useRouter();
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Stale-while-revalidate: seed from cache for instant back-navigation,
+  // then refresh in the background below.
+  const [jobs, setJobs] = useState<any[]>(
+    () => getCachedOr(JOBS_CACHE_KEY, JOBS_CACHE_TTL_MS, []),
+  );
+  const [loading, setLoading] = useState<boolean>(
+    () => getCached(JOBS_CACHE_KEY, JOBS_CACHE_TTL_MS) === null,
+  );
 
   // Search and Filter States
   const [titleQuery, setTitleQuery] = useState("");
@@ -45,6 +55,7 @@ export default function JobsPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     async function fetchJobs() {
       try {
         const { data } = await supabase
@@ -53,14 +64,19 @@ export default function JobsPage() {
           .eq("status", "open")
           .order("created_at", { ascending: false })
           .limit(100);
+        if (cancelled) return;
         setJobs(data || []);
+        setCached(JOBS_CACHE_KEY, data || []);
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     fetchJobs();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Filter Computation Match Logic
@@ -271,7 +287,9 @@ export default function JobsPage() {
                           <img
                             src={job.companies.logo_url}
                             className="w-full h-full object-contain"
-                            alt=""
+                            alt={`${job.companies?.name ?? "Company"} logo`}
+                            width={48}
+                            height={48}
                           />
                         ) : (
                           <Building2

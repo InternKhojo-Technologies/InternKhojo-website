@@ -34,24 +34,24 @@ export default function Footer() {
     {
       title: "For Client",
       links: [
-        { name: "How to hire", href: "/" },
-        { name: "Hire freelancer", href: "/" },
-        { name: "Dashboard", href: "/" },
+        { name: "How to hire", href: "/hire" },
+        { name: "Hire freelancer", href: "/hire" },
+        { name: "Dashboard", href: "/dashboard" },
       ],
     },
     {
       title: "For Talent",
       links: [
-        { name: "Find work", href: "/" },
-        { name: "Direct contact", href: "/" },
+        { name: "Find work", href: "/find" },
+        { name: "Direct contact", href: "/mentor" },
       ],
     },
     {
       title: "Resources",
       links: [
-        { name: "Help center", href: "/" },
-        { name: "Features", href: "/" },
-        { name: "Blog", href: "/" },
+        { name: "Help center", href: "/trust" },
+        { name: "Features", href: "/board" },
+        { name: "Blog", href: "/about" },
       ],
     },
     {
@@ -59,8 +59,8 @@ export default function Footer() {
       links: [
         { name: "About", href: "/about" },
         { name: "Careers", href: "/careers" },
-        { name: "Contact", href: "/" },
-        { name: "Partners", href: "/" },
+        { name: "Contact", href: "/about" },
+        { name: "Partners", href: "/companies" },
         { name: "Trust & safety", href: "/trust" },
       ],
     },
