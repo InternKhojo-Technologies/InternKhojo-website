@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "Terms of Service | InternKhojo",
+  title: "Terms of Service",
   description:
     "The legal agreement governing your access to and use of InternKhojo, operated by Corvian Ventures LLP.",
 };

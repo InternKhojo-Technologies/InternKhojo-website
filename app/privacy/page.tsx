@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "Privacy & Platform Policy | InternKhojo",
+  title: "Privacy & Platform Policy",
   description:
     "Learn how InternKhojo collects, uses, protects, and manages data for Candidates and Companies.",
 };

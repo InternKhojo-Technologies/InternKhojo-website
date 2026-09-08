@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { ABOUT_FAQ, aboutFaqJsonLd } from "@/lib/about-faq";
 import {
   ArrowUpRight,
   Zap,
@@ -33,103 +34,46 @@ const Reveal = ({
   </motion.div>
 );
 
-// --- FAQ Data ---
-const faqData = [
-  {
-    question: "What is InternKhojo?",
-    answer:
-      "InternKhojo is a next-generation talent platform that connects ambitious students and early-career professionals with curated internship opportunities across India and beyond. We vet every listing to ensure quality and relevance.",
-  },
-  {
-    question: "How do I apply for an internship?",
-    answer:
-      "Simply create your profile, browse the available openings on our platform, and hit apply. Your application goes directly to the hiring team—no black holes, no ghosting. You'll receive status updates at every stage.",
-  },
-  {
-    question: "Is InternKhojo free for students?",
-    answer:
-      "Yes, InternKhojo is completely free for students and job seekers. We believe access to opportunity should never have a paywall. Our revenue model is built around partnerships with companies, not candidates.",
-  },
-  {
-    question: "How are internships vetted?",
-    answer:
-      "Every internship posted on InternKhojo goes through a manual curation process. We verify company legitimacy, role expectations, stipend transparency, and mentorship quality before any listing goes live.",
-  },
-  {
-    question: "Can companies post internships on InternKhojo?",
-    answer:
-      "Absolutely. Companies and startups can onboard through our employer portal, create detailed role listings, and access our pool of pre-qualified, motivated candidates. We make hiring early talent effortless.",
-  },
-  {
-    question: "What makes InternKhojo different from other job boards?",
-    answer:
-      "We're not a job board—we're a career launchpad. Every role is handpicked, every application gets a response, and we offer direct mentorship from industry leaders. No spam, no noise, just signal.",
-  },
-];
+// --- FAQ Data (single source of truth in @/lib/about-faq) ---
+const faqData = ABOUT_FAQ;
 
 // --- FAQ Accordion Item ---
+// Native <details>/<summary>: every question + answer exists in the
+// server-rendered HTML (crawlable, no JS needed to read content).
+// First item starts open, matching the previous default state.
 const FAQItem = ({
   question,
   answer,
-  isOpen,
-  onClick,
+  defaultOpen,
   index,
 }: {
   question: string;
   answer: string;
-  isOpen: boolean;
-  onClick: () => void;
+  defaultOpen: boolean;
   index: number;
 }) => (
   <Reveal delay={index * 0.06}>
-    <div
-      className={`rounded-2xl md:rounded-3xl transition-all duration-400 ease-out ${isOpen
-        ? "bg-white shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] border border-gray-100"
-        : "bg-[#f4f5f7] hover:bg-[#ecedf0] border border-transparent"
-        }`}
+    <details
+      open={defaultOpen}
+      className="group rounded-2xl md:rounded-3xl transition-all duration-400 ease-out bg-[#f4f5f7] hover:bg-[#ecedf0] border border-transparent open:bg-white open:hover:bg-white open:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] open:border-gray-100"
     >
-      <button
-        onClick={onClick}
-        className="w-full flex items-center justify-between px-6 md:px-8 py-5 md:py-6 text-left cursor-pointer"
-      >
-        <span className={`text-sm md:text-base font-semibold tracking-tight pr-6 transition-colors duration-300 ${isOpen ? "text-[#0a0a0a]" : "text-[#11a1a]"
-          }`}>
+      <summary className="w-full flex items-center justify-between px-6 md:px-8 py-5 md:py-6 text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <span className="text-sm md:text-base font-semibold tracking-tight pr-6 transition-colors duration-300 text-[#0a0a0a]">
           {question}
         </span>
-        <motion.span
-          animate={{ rotate: isOpen ? 45 : 0 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className={`flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${isOpen
-            ? "bg-red-600 text-white"
-            : "bg-white text-[#0a0a0a] shadow-sm border border-gray-100"
-            }`}
-        >
+        <span className="flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-lg transition-all duration-300 bg-white text-[#0a0a0a] shadow-sm border border-gray-100 group-open:bg-red-600 group-open:text-white group-open:border-red-600 group-open:rotate-45">
           +
-        </motion.span>
-      </button>
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <p className="text-sm md:text-[15px] text-gray-500 font-normal leading-relaxed px-6 md:px-8 pb-6 md:pb-7 max-w-2xl">
-              {answer}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        </span>
+      </summary>
+      <p className="text-sm md:text-[15px] text-gray-500 font-normal leading-relaxed px-6 md:px-8 pb-6 md:pb-7 max-w-2xl">
+        {answer}
+      </p>
+    </details>
   </Reveal>
 );
 
 // --- FAQ Section ---
 const FAQSection = () => {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
-
   return (
     <section className="py-24 md:py-40 px-6 sm:px-12 lg:px-20 max-w-[800px] mx-auto">
       {/* Centered Header */}
@@ -155,8 +99,7 @@ const FAQSection = () => {
             key={idx}
             question={item.question}
             answer={item.answer}
-            isOpen={openIndex === idx}
-            onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
+            defaultOpen={idx === 0}
             index={idx}
           />
         ))}
@@ -178,9 +121,12 @@ export default function AboutPage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Organization",
-            name: "InternKhojo",
-            url: "https://www.internkhojo.com",
-            logo: "https://www.internkhojo.com/logo.png",
+            "@id": "https://internkhojo.com/#organization",
+            name: "Corvian Ventures LLP",
+            legalName: "Corvian Ventures LLP",
+            alternateName: "InternKhojo",
+            url: "https://internkhojo.com",
+            logo: "https://internkhojo.com/logo.png",
             description:
               "InternKhojo is a free internship platform based in India that connects students and early-career professionals with vetted internship opportunities. Companies post verified roles, candidates apply directly with no cost, and every listing is manually checked for legitimacy, stipend transparency, and mentorship quality.",
             sameAs: [
@@ -193,22 +139,12 @@ export default function AboutPage() {
           }),
         }}
       />
-      {/* FAQPage JSON-LD Structured Data */}
+      {/* FAQPage JSON-LD Structured Data — generated from the same
+          source as the visible FAQ so schema and content always match. */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: faqData.map((item) => ({
-              "@type": "Question",
-              name: item.question,
-              acceptedAnswer: {
-                "@type": "Answer",
-                text: item.answer,
-              },
-            })),
-          }),
+          __html: JSON.stringify(aboutFaqJsonLd()),
         }}
       />
       {/* 1. HERO SECTION */}
