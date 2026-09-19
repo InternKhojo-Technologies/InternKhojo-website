@@ -14,6 +14,14 @@ body {
 
 /* helpers */
 
+/* Arena display face (Inter, injected via --font-hire-display by
+   app/hire/layout.tsx). Falls back to system sans outside /hire. */
+.font-display-hire {
+  font-family: var(--font-hire-display), "Inter", "Geist Sans", ui-sans-serif,
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
+}
+
 .bg-primary {
   background: var(--primary);
 }

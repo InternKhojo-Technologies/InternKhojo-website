@@ -1,441 +1,1294 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
-import { AnimatePresence, motion } from "framer-motion";
+import { getCategoryMeta, normalizeCategory } from "@/lib/hire-categories";
+import {
+  formatMsCompact,
+  todayDateString,
+  type HireAttempt,
+  type HireReviewItem,
+  type HireSafeQuestion,
+} from "@/lib/hire-types";
+import ElapsedTimer from "@/app/hire/_components/elapsed-timer";
 import {
   Timer,
-  Terminal,
   ArrowRight,
-  CheckCircle,
-  HelpCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Check,
+  XCircle,
+  MinusCircle,
+  Trophy,
+  ShieldAlert,
+  RotateCcw,
   Activity,
+  Lightbulb,
+  History,
+  ChevronLeft,
+  ChevronRight,
+  Flag,
+  BookOpen,
+  Tag,
+  Gauge,
+  Target,
 } from "lucide-react";
 
-// =========================================================================
-// THE MASTER DATA POOL (ALL 7 RECRUITMENT DOMAINS)
-// =========================================================================
+type Phase = "checking" | "ready" | "submitting" | "completed" | "error";
 
-const APTITUDE_POOL = [
-  {
-    id: "apt-01",
-    question:
-      "In a high-frequency trading server architecture, 1% of the connected node ports experience sudden memory leaks. A real-time automation watch script detects 90% of actual leaks, but has a 5% false-positive rate on healthy nodes. If a node triggers an alert loop, what is the exact probability that it actually has a memory leak?",
-    options: ["15.3%", "23.1%", "90.0%", "8.2%"],
-    correct: "15.3%",
-    hint: "Apply Bayes Theorem: P(Leak|Alert) = P(Alert|Leak) * P(Leak) / P(Alert).",
-  },
-];
+interface HistoryEntry {
+  id: string;
+  attempt_date: string;
+  total_score: number;
+  total_time_ms: number;
+}
 
-const PUZZLE_POOL = [
-  {
-    id: "puz-01",
-    question:
-      "Three ants are sitting on the three corners of an equilateral triangle. Each ant randomly chooses a direction and starts moving along the edge of the triangle. What is the probability that none of the ants collide with each other?",
-    options: ["0.25 (25%)", "0.50 (50%)", "0.125 (12.5%)", "0.33 (33.3%)"],
-    correct: "0.25 (25%)",
-    hint: "Collision only avoids if all ants move clockwise or all move counter-clockwise.",
-  },
-];
+interface SubmitPayload {
+  answers: Record<string, string>;
+  total_time_ms: number;
+}
 
-const DSA_POOL = [
-  {
-    id: "dsa-01",
-    question:
-      "Given an array of integers 'nums' and an integer 'target', you need to find the indices of two numbers such that they add up to the target. To optimize for Tier-1 engineering benchmarks, what is the best achievable time complexity?",
-    options: [
-      "O(N^2) Space-Efficient",
-      "O(N log N) Sorted Pivot",
-      "O(N) Hash Map Optimization",
-      "O(1) Constant",
-    ],
-    correct: "O(N) Hash Map Optimization",
-    hint: "Using a single pass with a companion hash map yields sub-linear lookups.",
-  },
-];
+function prettyDate(iso: string) {
+  try {
+    const d = new Date(`${iso}T00:00:00Z`);
+    return d.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      timeZone: "Asia/Kolkata",
+    });
+  } catch {
+    return iso;
+  }
+}
 
-const FINANCE_POOL = [
-  {
-    id: "fin-01",
-    question:
-      "An organization holds ₹5,00,500 in liquid cash equivalents and short-term market blocks, with total current liabilities locked at ₹2,50,250. Calculate the precise Acid-Test (Quick) Ratio metrics for this allocation stream.",
-    options: ["1.5 : 1", "2.0 : 1", "0.75 : 1", "2.5 : 1"],
-    correct: "2.0 : 1",
-    hint: "Quick Ratio = (Current Assets - Inventory) / Current Liabilities.",
-  },
-];
+function storageKey(slug: string): string {
+  return `hire:daily:${slug}:${todayDateString()}`;
+}
 
-const MARKETING_POOL = [
-  {
-    id: "mkt-01",
-    question:
-      "A product growth campaign reports a Customer Acquisition Cost (CAC) of ₹1,200. If the structural Lifetime Value (LTV) of the acquired cohort metrics computes to ₹4,800, what is the clear unit economic health ratio?",
-    options: [
-      "1:1 (Break-even)",
-      "2:1 (Under-performing)",
-      "4:1 (Highly Profitable)",
-      "1:4 (Negative ROI)",
-    ],
-    correct: "4:1 (Highly Profitable)",
-    hint: "LTV to CAC ratio over 3:1 is the healthy benchmark for enterprise startup trajectories.",
-  },
-];
+function readStoredProgress(slug: string): {
+  questions: HireSafeQuestion[];
+  answers: Record<string, string>;
+  startedAt: number;
+} | null {
+  try {
+    const raw = sessionStorage.getItem(storageKey(slug));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      questions?: HireSafeQuestion[];
+      answers?: Record<string, string>;
+      startedAt?: number;
+    };
+    if (!Array.isArray(parsed.questions) || parsed.questions.length === 0) return null;
+    return {
+      questions: parsed.questions,
+      answers:
+        parsed.answers && typeof parsed.answers === "object" ? parsed.answers : {},
+      startedAt: typeof parsed.startedAt === "number" ? parsed.startedAt : Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
 
-const DESIGN_POOL = [
-  {
-    id: "dsn-01",
-    question:
-      "According to standard UI/UX Heuristic Evaluation rules (Jakob's Law), how should an automated service interface structure its interactive buttons and components?",
-    options: [
-      "Use extreme unconventional patterns to look creative",
-      "Align layouts to match familiar mental models users already know",
-      "Keep switching navigation flows per page to test alertness",
-      "Avoid using any text labels to force minimalist abstract styles",
-    ],
-    correct: "Align layouts to match familiar mental models users already know",
-    hint: "Users spend most of their time on other sites, meaning they prefer yours to work similarly.",
-  },
-];
+function writeStoredProgress(
+  slug: string,
+  questions: HireSafeQuestion[],
+  answers: Record<string, string>,
+  startedAt: number
+) {
+  try {
+    sessionStorage.setItem(
+      storageKey(slug),
+      JSON.stringify({ questions, answers, startedAt })
+    );
+  } catch {
+    // storage is best-effort (private mode etc.)
+  }
+}
 
-const BACKEND_POOL = [
-  {
-    id: "bnd-01",
-    question:
-      "A high-traffic transaction log table lacks proper indexing on frequently filtered columns, causing massive sequential scans. Which database configuration block is best suited to index arbitrary JSONB query arrays?",
-    options: [
-      "B-Tree Index Path",
-      "Hash Index Vector",
-      "GIN (Generalized Inverted Index)",
-      "Partial Cluster Map",
-    ],
-    correct: "GIN (Generalized Inverted Index)",
-    hint: "GIN indexes are engineered to index composite components and multi-value parameters.",
-  },
-];
+function clearStoredProgress(slug: string) {
+  try {
+    sessionStorage.removeItem(storageKey(slug));
+  } catch {
+    // ignore
+  }
+}
 
-// =========================================================================
+function CheckingSkeleton() {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="space-y-4 animate-pulse">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 space-y-3">
+          <div className="h-4 w-full rounded bg-neutral-100" />
+          <div className="h-4 w-5/6 rounded bg-neutral-100" />
+          <div className="grid gap-2.5 pt-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-[60px] rounded-xl bg-neutral-100" />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="hidden lg:block">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 space-y-3 animate-pulse">
+          <div className="h-3 w-24 rounded bg-neutral-100" />
+          <div className="grid grid-cols-5 gap-1.5">
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
+              <div key={i} className="h-10 rounded-lg bg-neutral-100" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-export default function ActiveGameArenaPage() {
+/** Question number grid. Jump anywhere — answered, skipped or new. */
+function Palette({
+  questions,
+  answers,
+  current,
+  onJump,
+  columns = "grid-cols-5",
+}: {
+  questions: HireSafeQuestion[];
+  answers: Record<string, string>;
+  current: number;
+  onJump: (i: number) => void;
+  columns?: string;
+}) {
+  return (
+    <div className={`grid ${columns} gap-1.5`} role="tablist" aria-label="Question navigator">
+      {questions.map((q, i) => {
+        const done = Boolean(answers[q.id]);
+        const isCurrent = i === current;
+        return (
+          <button
+            key={q.id}
+            role="tab"
+            aria-selected={isCurrent}
+            aria-label={`Question ${i + 1}${done ? ", answered" : ", not answered"}`}
+            onClick={() => onJump(i)}
+            className={`flex h-10 cursor-pointer touch-manipulation items-center justify-center rounded-lg text-[13px] font-bold tabular-nums border transition-colors sm:h-11 ${
+              isCurrent
+                ? "border-neutral-900 bg-neutral-900 text-white"
+                : done
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500"
+                  : "border-neutral-200 bg-white text-neutral-400 hover:border-neutral-400 hover:text-neutral-700"
+            }`}
+          >
+            {i + 1}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Difficulty / subject / subtopic chips shown on the question + in review. */
+function MetaChips({
+  difficulty,
+  subject,
+  subtopic,
+}: {
+  difficulty?: string;
+  subject?: string;
+  subtopic?: string;
+}) {
+  const diffColor =
+    difficulty?.toLowerCase() === "easy"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : difficulty?.toLowerCase() === "hard"
+        ? "bg-red-50 text-red-700 ring-red-200"
+        : "bg-amber-50 text-amber-800 ring-amber-200";
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {difficulty && (
+        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ${diffColor}`}>
+          <Gauge size={11} /> {difficulty}
+        </span>
+      )}
+      {subject && (
+        <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-neutral-600">
+          <BookOpen size={11} /> {subject}
+        </span>
+      )}
+      {subtopic && (
+        <span className="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-neutral-600">
+          <Tag size={11} /> {subtopic}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** "Good for: Placements, Bank Exams" — where this question helps. */
+function TargetsBox({ targets }: { targets?: string[] }) {
+  if (!targets || targets.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3">
+      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-500">
+        <Target size={11} /> Good for
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {targets.map((t) => (
+          <span
+            key={t}
+            className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-700"
+          >
+            {t}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function DailyTestRunner() {
   const params = useParams();
   const router = useRouter();
-  const trackType = params?.type as string;
+  const rawType = params?.type;
+  const slug = normalizeCategory(Array.isArray(rawType) ? rawType[0] : rawType);
+  const meta = slug ? getCategoryMeta(slug) : null;
 
-  // Hydration Guard
-  const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [phase, setPhase] = useState<Phase>("checking");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Active Game State
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<HireSafeQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answersLog, setAnswersLog] = useState<Record<string, string>>({});
 
-  // Execution Metrics
-  const [seconds, setSeconds] = useState(0);
-  const [gameFinished, setGameFinished] = useState(false);
-  const [submissionLoading, setSubmissionLoading] = useState(false);
+  const [elapsedAnchor, setElapsedAnchor] = useState(() => Date.now());
+  const startTimeRef = useRef<number>(elapsedAnchor);
+  const lastPayloadRef = useRef<SubmitPayload | null>(null);
+  // Deep link from /hire/history: ?review=<attemptId> opens that try directly.
+  const reviewRef = useRef<string | null>(
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("review")
+  );
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startTimeRef = useRef<number>(Date.now());
+  const [attempt, setAttempt] = useState<HireAttempt | null>(null);
+  const [reviewItems, setReviewItems] = useState<HireReviewItem[]>([]);
+  const [viewingPastId, setViewingPastId] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  // True when boot was asked for a ?review= try that could not be loaded.
+  // Shows a clear error instead of falling through to today's test UI.
+  const [reviewFailed, setReviewFailed] = useState(false);
 
-  // Custom Toast State
-  const [toast, setToast] = useState<{
-    show: boolean;
-    msg: string;
-    type: "success" | "error";
-  }>({
-    show: false,
-    msg: "",
-    type: "success",
-  });
+  const restartClock = useCallback((from: number) => {
+    startTimeRef.current = from;
+    setElapsedAnchor(from);
+  }, []);
 
   useEffect(() => {
-    setMounted(true);
-    fetchLiveChallengeMatrix();
+    if (!slug || phase !== "ready" || questions.length === 0) return;
+    writeStoredProgress(slug, questions, answersLog, startTimeRef.current);
+  }, [slug, phase, questions, answersLog]);
 
-    timerRef.current = setInterval(() => {
-      setSeconds((prev) => prev + 1);
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-    };
-  }, [trackType]);
-
-  const triggerToast = (msg: string, type: "success" | "error" = "success") => {
-    setToast({ show: true, msg, type });
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(
-      () => setToast((prev) => ({ ...prev, show: false })),
-      3000,
-    );
-  };
-
-  const fetchLiveChallengeMatrix = async () => {
+  const loadHistory = useCallback(async () => {
+    if (!slug) return;
+    setLoadingHistory(true);
     try {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      const { data: databasePool, error } = await supabase
-        .from("game_challenges")
-        .select("*")
-        .eq("type", trackType);
-
-      if (error) throw error;
-
-      if (!databasePool || databasePool.length === 0) {
-        triggerToast(
-          "No active challenge sequence instances deployed for this branch",
-          "error",
-        );
-        setTimeout(() => router.push("/hire"), 2000);
-        return;
-      }
-
-      setQuestions(databasePool);
-      startTimeRef.current = Date.now();
-    } catch (err: any) {
-      console.error("Failed to compile database stream:", err);
-      triggerToast("Data extraction synchronization interrupted", "error");
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const res = await fetch("/api/hire/stats?limit=20", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const recent = (json?.stats?.recentAttempts ?? []) as Array<{
+        id: string;
+        category: string;
+        attempt_date: string;
+        total_score: number;
+        total_time_ms: number;
+      }>;
+      setHistory(
+        recent
+          .filter((r) => r.category === slug)
+          .map((r) => ({
+            id: r.id,
+            attempt_date: r.attempt_date,
+            total_score: r.total_score,
+            total_time_ms: r.total_time_ms,
+          }))
+      );
+    } catch {
+      // history is best-effort
     } finally {
-      setLoading(false);
+      setLoadingHistory(false);
     }
-  };
+  }, [slug]);
 
-  const formatClockTime = (totalSecs: number) => {
-    const mins = Math.floor(totalSecs / 60);
-    const secs = totalSecs % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleOptionSelect = (option: string) => {
-    setSelectedAnswer(option);
-  };
-
-  const advanceSequenceRoute = () => {
-    if (!selectedAnswer) {
-      triggerToast("Please commit a matrix value sequence selection", "error");
+  // Identity + today's status + question set all resolve together — boot
+  // waits on the slowest call only. A ?review= id opens that past try first.
+  const boot = useCallback(async () => {
+    if (!slug || !meta) {
+      setPhase("error");
+      setLoadError("Unknown test topic. Pick a valid topic from the list.");
       return;
     }
-
-    const currentQuestion = questions[currentIdx];
-
-    // ✨ TypeScript Explicit Record Definition - Fixes indexing type error
-    const updatedAnswers: Record<string, string> = {
-      ...answersLog,
-      [currentQuestion.id]: selectedAnswer,
-    };
-
-    setAnswersLog(updatedAnswers);
-
-    if (currentIdx < questions.length - 1) {
-      setCurrentIdx((prev) => prev + 1);
-      setSelectedAnswer(updatedAnswers[questions[currentIdx + 1].id] || null);
-    } else {
-      commitPipelineTransaction(updatedAnswers);
-    }
-  };
-
-  const regressSequenceRoute = () => {
-    if (currentIdx > 0) {
-      setCurrentIdx((prev) => prev - 1);
-      setSelectedAnswer(answersLog[questions[currentIdx - 1].id] || null);
-    }
-  };
-
-  const commitPipelineTransaction = async (
-    finalAnswers: Record<string, string>,
-  ) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setSubmissionLoading(true);
-
-    const totalDurationSeconds = Math.floor(
-      (Date.now() - startTimeRef.current) / 1000,
-    );
-
+    setPhase("checking");
+    setLoadError(null);
+    setSubmitError(null);
+    setReviewFailed(false);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const insertPromises = questions.map((q) => {
-        const isCorrect = finalAnswers[q.id] === q.correct_answer;
-        return supabase.from("game_submissions").insert({
-          user_id: user.id,
-          challenge_id: q.id,
-          game_type: trackType,
-          time_taken_seconds: totalDurationSeconds / questions.length,
-          points_awarded: isCorrect ? 10 : 0,
-          is_correct: isCorrect,
-        });
+      const sessionP = supabase.auth.getSession();
+      const userP = supabase.auth.getUser();
+      const headersP = sessionP.then(({ data }) => {
+        const token = data.session?.access_token ?? "";
+        return (token ? { Authorization: `Bearer ${token}` } : {}) as HeadersInit;
       });
+      const getJson = (url: string) =>
+        headersP.then(async (headers) => {
+          const res = await fetch(url, { headers });
+          if (res.status === 401) throw new Error("__AUTH__");
+          const json = await res.json();
+          return { ok: res.ok, status: res.status, json };
+        });
+      const attemptP = getJson(`/api/hire/attempt?category=${encodeURIComponent(slug)}`);
+      const questionsP = getJson(`/api/hire/questions?category=${encodeURIComponent(slug)}`);
 
-      await Promise.all(insertPromises);
-      setGameFinished(true);
-    } catch (err) {
-      console.error("Metrics submission commit transaction crashed:", err);
-      triggerToast("Data stream submission pipeline sync error", "error");
-    } finally {
-      setSubmissionLoading(false);
+      const [{ data: userData }, attemptRes, qRes] = await Promise.all([
+        userP,
+        attemptP,
+        questionsP,
+      ]);
+      if (!userData.user) {
+        router.push(`/login?redirect=/hire/${slug}/daily`);
+        return;
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+      const userRole = (profile as { role?: string } | null)?.role ?? "candidate";
+      if (userRole === "recruiter") {
+        setPhase("error");
+        setLoadError("__RECRUITER__");
+        return;
+      }
+      const headers = await headersP;
+
+      // Deep-linked past try (from /hire/history) wins over everything.
+      // If it fails to load we STOP with a clear error — falling through
+      // to today's test would show a quiz to attempt, which is exactly the
+      // confusion reported for blank/partial submits.
+      const reviewId = reviewRef.current;
+      if (reviewId) {
+        reviewRef.current = null;
+        interface ReviewPayload {
+          attempt?: HireAttempt;
+          items?: HireReviewItem[];
+          error?: string;
+        }
+        let reviewData: ReviewPayload | null = null;
+        let reviewResOk = false;
+        try {
+          const res = await fetch(
+            `/api/hire/attempt?category=${encodeURIComponent(slug)}&attempt_id=${encodeURIComponent(reviewId)}`,
+            { headers }
+          );
+          reviewResOk = res.ok;
+          reviewData = (await res.json()) as ReviewPayload;
+        } catch {
+          reviewResOk = false;
+          reviewData = null;
+        }
+        if (reviewResOk && reviewData?.attempt) {
+          setAttempt(reviewData.attempt);
+          setReviewItems((reviewData.items ?? []) as HireReviewItem[]);
+          setViewingPastId(reviewId);
+          setPhase("completed");
+          loadHistory();
+          return;
+        }
+        router.replace(`/hire/${slug}/daily`);
+        setReviewFailed(true);
+        setPhase("error");
+        setLoadError(
+          reviewData?.error === "Attempt not found."
+            ? "That past try couldn't be opened — it may have been removed. Your other tries are safe below."
+            : "That past try couldn't be loaded right now. Retry — your answers are saved."
+        );
+        return;
+      }
+
+      if (!attemptRes.ok) {
+        throw new Error(attemptRes.json?.error || "Could not check today's test.");
+      }
+      if (attemptRes.json.completed) {
+        clearStoredProgress(slug);
+        setAttempt(attemptRes.json.attempt as HireAttempt);
+        setReviewItems((attemptRes.json.items ?? []) as HireReviewItem[]);
+        setPhase("completed");
+        loadHistory();
+        return;
+      }
+
+      if (!qRes.ok) {
+        throw new Error(qRes.json?.error || "Could not load questions.");
+      }
+      const qs = (qRes.json.questions ?? []) as HireSafeQuestion[];
+      if (qs.length === 0) throw new Error("No questions in this topic yet — check back soon.");
+
+      const stored = readStoredProgress(slug);
+      const storedAnswers: Record<string, string> = {};
+      if (stored) {
+        const freshIds = new Set(qs.map((q) => q.id));
+        for (const [k, v] of Object.entries(stored.answers)) {
+          if (freshIds.has(k) && typeof v === "string" && v !== "") {
+            storedAnswers[k] = v;
+          }
+        }
+      }
+      const startedAt = Date.now() - elapsedMsRefSafe(stored);
+      setQuestions(qs);
+      setCurrentIdx(0);
+      setAnswersLog(storedAnswers);
+      lastPayloadRef.current = null;
+      setPhase("ready");
+      restartClock(startedAt);
+      loadHistory();
+    } catch (e) {
+      if (e instanceof Error && e.message === "__AUTH__") {
+        router.push(`/login?redirect=/hire/${slug}/daily`);
+        return;
+      }
+      setPhase("error");
+      setLoadError(e instanceof Error ? e.message : "Something went wrong.");
+    }
+  }, [slug, meta, router, restartClock, loadHistory]);
+
+  useEffect(() => {
+    boot();
+  }, [boot]);
+
+  const activeQuestion = questions[currentIdx];
+  const selectedForActive = activeQuestion ? answersLog[activeQuestion.id] ?? null : null;
+  const answeredCount = questions.filter((q) => answersLog[q.id]).length;
+  const unansweredCount = questions.length - answeredCount;
+  const questionTotal =
+    questions.length > 0
+      ? questions.length
+      : reviewItems.length > 0
+        ? reviewItems.length
+        : 10;
+
+  const scrollTopOnMobile = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  if (!mounted) return null;
+  /** Low-level sender: posts the given payload, never touches questions. */
+  const doSubmit = useCallback(
+    async (payload: SubmitPayload) => {
+      if (!slug) return;
+      setPhase("submitting");
+      setSubmitError(null);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token ?? "";
+        const res = await fetch("/api/hire/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            category: slug,
+            answers: payload.answers,
+            total_time_ms: payload.total_time_ms,
+          }),
+        });
+        const json = await res.json();
+        if (res.status === 409) {
+          const {
+            data: { session: session2 },
+          } = await supabase.auth.getSession();
+          const token2 = session2?.access_token ?? "";
+          const retry = await fetch(
+            `/api/hire/attempt?category=${encodeURIComponent(slug)}`,
+            { headers: token2 ? { Authorization: `Bearer ${token2}` } : {} }
+          );
+          const retryJson = await retry.json();
+          if (retry.ok && retryJson.completed) {
+            clearStoredProgress(slug);
+            setAttempt(retryJson.attempt as HireAttempt);
+            setReviewItems((retryJson.items ?? []) as HireReviewItem[]);
+            setPhase("completed");
+            loadHistory();
+            return;
+          }
+          throw new Error(json?.error || "Already submitted today.");
+        }
+        if (!res.ok) throw new Error(json?.error || "Submission failed.");
+        clearStoredProgress(slug);
+        setAttempt(json.attempt as HireAttempt);
+        setReviewItems((json.items ?? []) as HireReviewItem[]);
+        setPhase("completed");
+        loadHistory();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (e) {
+        restartClock(Date.now() - payload.total_time_ms);
+        setPhase("ready");
+        setSubmitError(
+          e instanceof Error
+            ? `${e.message} Your answers are saved — retry to submit the same test.`
+            : "Submission failed. Your answers are saved — please retry."
+        );
+      }
+    },
+    [slug, loadHistory, restartClock]
+  );
 
-  if (loading || submissionLoading)
+  const submit = useCallback(async () => {
+    if (phase !== "ready") return;
+    const unanswered = questions.filter((q) => !answersLog[q.id]).length;
+    if (unanswered > 0) {
+      const ok = window.confirm(
+        `${unanswered} question${unanswered > 1 ? "s are" : " is"} still blank and will be marked wrong. Submit anyway?`
+      );
+      if (!ok) return;
+    }
+    const totalTimeMs = Date.now() - startTimeRef.current;
+    // Send the FULL set — blanks go as "" so skipped questions are stored
+    // too and show up in review with their answers + solutions.
+    const fullAnswers: Record<string, string> = {};
+    for (const q of questions) fullAnswers[q.id] = answersLog[q.id] ?? "";
+    const payload: SubmitPayload = {
+      answers: fullAnswers,
+      total_time_ms: totalTimeMs,
+    };
+    lastPayloadRef.current = payload;
+    await doSubmit(payload);
+  }, [phase, questions, answersLog, doSubmit]);
+
+  /** Retry re-sends the stored payload verbatim — no re-fetch, no reset. */
+  const retrySubmit = useCallback(async () => {
+    const payload = lastPayloadRef.current;
+    if (!payload) {
+      await submit();
+      return;
+    }
+    const refreshed: SubmitPayload = {
+      answers: { ...payload.answers },
+      total_time_ms: Date.now() - startTimeRef.current,
+    };
+    lastPayloadRef.current = refreshed;
+    await doSubmit(refreshed);
+  }, [doSubmit, submit]);
+
+  // Free movement: jump anywhere, skip anything. Nothing is forced —
+  // unanswered questions simply count as wrong on submit.
+  const goNextCb = useCallback(() => {
+    if (currentIdx < questions.length - 1) {
+      setCurrentIdx((i) => i + 1);
+      scrollTopOnMobile();
+    } else {
+      void submit();
+    }
+  }, [currentIdx, questions.length, submit]);
+
+  const goBackCb = useCallback(() => {
+    if (currentIdx > 0) {
+      setCurrentIdx((i) => i - 1);
+      scrollTopOnMobile();
+    }
+  }, [currentIdx]);
+
+  const jumpCb = useCallback(() => {
+    scrollTopOnMobile();
+  }, []);
+
+  // Keyboard-first answering: 1–6 / A–F select an option, → / Enter advance,
+  // ← goes back. Enter on a focused button keeps its native click behavior.
+  useEffect(() => {
+    if (phase !== "ready" || !activeQuestion) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      const numIdx = ["1", "2", "3", "4", "5", "6"].indexOf(k);
+      const letterIdx = ["a", "b", "c", "d", "e", "f"].indexOf(k);
+      const optIdx = numIdx >= 0 ? numIdx : letterIdx;
+      if (optIdx >= 0 && optIdx < activeQuestion.options.length) {
+        setSubmitError(null);
+        const opt = activeQuestion.options[optIdx];
+        setAnswersLog((prev) => ({ ...prev, [activeQuestion.id]: opt }));
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "Enter") {
+        if (e.key === "Enter" && document.activeElement?.tagName === "BUTTON") return;
+        e.preventDefault();
+        goNextCb();
+      } else if (e.key === "ArrowLeft") {
+        goBackCb();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, activeQuestion, goNextCb, goBackCb]);
+
+  const loadPastAttempt = async (attemptId: string) => {
+    try {
+      setLoadError(null);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const res = await fetch(
+        `/api/hire/attempt?category=${encodeURIComponent(slug!)}&attempt_id=${encodeURIComponent(attemptId)}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Could not load that try.");
+      setAttempt(json.attempt as HireAttempt);
+      setReviewItems((json.items ?? []) as HireReviewItem[]);
+      setViewingPastId(attemptId);
+      setPhase("completed");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Could not load that try.");
+    }
+  };
+
+  const backToToday = async () => {
+    reviewRef.current = null;
+    setViewingPastId(null);
+    router.replace(`/hire/${slug}/daily`);
+    await boot();
+  };
+
+  // ── Recruiter view-only guard ──────────────────────────────────────────
+  if (phase === "error" && loadError === "__RECRUITER__") {
     return (
-      <div className="h-screen w-full bg-[#FAFAFA] flex items-center justify-center px-4">
-        <div className="flex items-center gap-2">
-          <Activity size={12} className="animate-spin text-neutral-400" />
-          <span className="text-[10px] font-mono tracking-wider text-neutral-400">
-            PIPELINE_TRANSACTION_ACTIVE...
-          </span>
+      <div className="min-h-screen bg-[#FAFAFA] text-neutral-900 pb-24">
+        <div className="mx-auto max-w-[720px] px-4 sm:px-6 pt-8 sm:pt-12 space-y-5">
+          <Link
+            href="/hire"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 hover:text-neutral-900"
+          >
+            <ArrowLeft size={14} /> Practice tests
+          </Link>
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-8 sm:p-10 text-center space-y-4">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-amber-200 bg-white text-amber-700">
+              <ShieldAlert size={22} />
+            </div>
+            <h1 className="font-display-hire text-xl font-bold tracking-tight">Just looking around?</h1>
+            <p className="mx-auto max-w-md text-sm leading-relaxed text-neutral-600">
+              You signed in as a recruiter, so you can&apos;t take tests — this
+              keeps the leaderboard fair for students. You can still see all
+              the rankings and scores.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2.5 pt-2">
+              <Link
+                href="/hire/leaderboard"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-neutral-900 px-5 text-sm font-semibold text-white hover:bg-neutral-700"
+              >
+                <Trophy size={14} /> Open leaderboard
+              </Link>
+              <Link
+                href="/hire"
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-800 hover:border-neutral-900"
+              >
+                Browse topics
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     );
-
-  const activeQuestion = questions[currentIdx];
+  }
 
   return (
-    <div className="bg-[#FAFAFA] min-h-screen text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white pb-32 antialiased">
-      <AnimatePresence>
-        {toast.show && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 bg-neutral-950 text-neutral-100 px-4 py-2.5 rounded border border-neutral-800 shadow-lg"
-          >
-            <Terminal size={12} className="text-neutral-400" />
-            <span className="text-[10px] font-mono uppercase tracking-wider leading-none">
-              {toast.msg}
-            </span>
-          </motion.div>
+    <div className="min-h-screen bg-[#FAFAFA] text-neutral-900 antialiased pb-28">
+      <div className="mx-auto max-w-[1080px] px-4 sm:px-6 pt-6 sm:pt-10 space-y-5">
+        <Link
+          href="/hire"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 hover:text-neutral-900"
+        >
+          <ArrowLeft size={14} /> Practice tests
+        </Link>
+
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500">
+              {(meta?.title ?? slug ?? "…").toUpperCase()}
+            </p>
+            <h1 className="font-display-hire mt-1.5 text-[26px] sm:text-3xl font-extrabold tracking-tight leading-none">
+              {phase === "completed" ? "Answers & solutions" : "Today's test"}
+            </h1>
+            <p className="mt-1.5 text-[13px] text-neutral-500">
+              Same {questionTotal} questions for everyone today · one try · jump
+              anywhere, skip anything
+            </p>
+          </div>
+          {phase === "ready" || phase === "submitting" ? (
+            <div className="flex h-10 shrink-0 items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 font-mono text-[15px] font-bold tabular-nums shadow-sm">
+              <Timer size={15} className="text-neutral-500" />
+              <ElapsedTimer startedAt={elapsedAnchor} />
+            </div>
+          ) : attempt ? (
+            <div className="flex h-10 shrink-0 items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 font-mono text-sm font-bold tabular-nums text-neutral-700 shadow-sm">
+              <Timer size={14} className="text-neutral-400" />
+              {formatMsCompact(attempt.total_time_ms)}
+            </div>
+          ) : null}
+        </header>
+
+        {loadError && loadError !== "__RECRUITER__" && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5">
+            <p className="text-[13px] font-medium text-red-800">{loadError}</p>
+            <button
+              onClick={boot}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-800 hover:bg-red-100"
+            >
+              <RotateCcw size={12} /> Retry
+            </button>
+          </div>
         )}
-      </AnimatePresence>
 
-      <div className="max-w-[800px] mx-auto px-4 sm:px-6 pt-12 sm:pt-20 space-y-8">
-        {!gameFinished ? (
-          <div className="space-y-8">
-            <header className="flex items-center justify-between border-b border-neutral-200/60 pb-6">
-              <div className="space-y-1">
-                <span className="text-[9px] font-mono font-bold text-[#FF3B30] uppercase tracking-widest">
-                  // TRACK_RUN: {trackType?.toUpperCase()}
-                </span>
-                <h1 className="text-lg font-black uppercase tracking-tight text-neutral-950">
-                  Segment Progress {currentIdx + 1}/{questions.length}
-                </h1>
-              </div>
-              <div className="flex items-center gap-2 bg-white border border-neutral-200/60 px-3 py-1.5 rounded-lg font-mono text-xs font-bold shadow-sm">
-                <Timer size={13} className="animate-pulse text-neutral-600" />
-                <span>{formatClockTime(seconds)}</span>
-              </div>
-            </header>
+        {submitError && phase === "ready" && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5">
+            <p className="text-[13px] font-medium text-red-800">{submitError}</p>
+            <button
+              onClick={retrySubmit}
+              className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-white hover:bg-neutral-700"
+            >
+              <RotateCcw size={12} /> Retry submission
+            </button>
+          </div>
+        )}
 
-            <div className="bg-white border border-neutral-200/60 p-6 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
-              <div className="text-[9px] font-mono text-neutral-300 font-bold tracking-wider">
-                // EVALUATION_QUERY_STATEMENT
+        {phase === "checking" && <CheckingSkeleton />}
+
+        {phase === "error" && loadError !== "__RECRUITER__" && (
+          <div className="rounded-2xl border border-neutral-200 bg-white p-10 text-center space-y-4">
+            <p className="text-sm font-medium text-neutral-500">
+              {reviewFailed && loadError ? loadError : "This test could not be loaded."}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2.5">
+              {reviewFailed ? (
+                <>
+                  <button
+                    onClick={() => void backToToday()}
+                    className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-neutral-900 px-5 text-sm font-semibold text-white hover:bg-neutral-700"
+                  >
+                    <RotateCcw size={13} /> Today&apos;s test
+                  </button>
+                  <Link
+                    href="/hire/history"
+                    className="inline-flex h-11 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-800 hover:border-neutral-900"
+                  >
+                    <History size={14} /> Past tries
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={boot}
+                    className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-neutral-900 px-5 text-sm font-semibold text-white hover:bg-neutral-700"
+                  >
+                    <RotateCcw size={13} /> Try again
+                  </button>
+                  <Link
+                    href="/hire"
+                    className="inline-flex h-11 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-800 hover:border-neutral-900"
+                  >
+                    All topics
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(phase === "ready" || phase === "submitting") && activeQuestion && (
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+            {/* ── main column ── */}
+            <div className="space-y-4 min-w-0">
+              {/* compact progress + palette for phones */}
+              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 shadow-sm space-y-3 lg:hidden">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="tabular-nums text-neutral-900">
+                    Question {currentIdx + 1}{" "}
+                    <span className="font-normal text-neutral-400">of {questions.length}</span>
+                  </span>
+                  <span className="tabular-nums text-neutral-500">
+                    {answeredCount}/{questions.length} done
+                    {unansweredCount > 0 && ` · ${unansweredCount} left`}
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                  <div
+                    className="h-full rounded-full bg-neutral-900 transition-all duration-300"
+                    style={{ width: `${(answeredCount / questions.length) * 100}%` }}
+                  />
+                </div>
+                <Palette
+                  questions={questions}
+                  answers={answersLog}
+                  current={currentIdx}
+                  onJump={(i) => {
+                    setCurrentIdx(i);
+                    jumpCb();
+                  }}
+                />
+                <div className="flex items-center gap-4 text-[11px] font-medium text-neutral-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded bg-emerald-500" /> Answered
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded border border-neutral-300 bg-white" /> Blank
+                  </span>
+                </div>
+                <TargetsBox targets={activeQuestion.targets} />
               </div>
-              <p className="text-sm sm:text-base font-medium leading-relaxed text-neutral-900">
-                {activeQuestion?.question}
+
+              {/* question — slides in on every step */}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={currentIdx}
+                  initial={{ opacity: 0, x: 32 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -32 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="space-y-4"
+                >
+                  <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-7">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+                        Question {currentIdx + 1} of {questions.length}
+                      </p>
+                    </div>
+                    <p className="mt-3 text-[16.5px] sm:text-[17px] font-medium leading-[1.65] text-neutral-900">
+                      {activeQuestion.question}
+                    </p>
+                    <div className="mt-4 border-t border-neutral-100 pt-3.5">
+                      <MetaChips
+                        difficulty={activeQuestion.difficulty_level}
+                        subject={activeQuestion.subject}
+                        subtopic={activeQuestion.subtopic}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5" role="radiogroup" aria-label={`Options for question ${currentIdx + 1}`}>
+                    {activeQuestion.options.map((opt, i) => {
+                      const isSel = selectedForActive === opt;
+                      const letter = String.fromCharCode(65 + i);
+                      return (
+                        <motion.button
+                          key={i}
+                          role="radio"
+                          aria-checked={isSel}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: i * 0.05 }}
+                          whileTap={{ scale: 0.985 }}
+                          onClick={() => {
+                            setSubmitError(null);
+                            setAnswersLog((prev) => ({ ...prev, [activeQuestion.id]: opt }));
+                          }}
+                          className={`flex min-h-[60px] w-full cursor-pointer touch-manipulation items-center gap-3.5 rounded-xl border p-4 text-left transition-colors ${
+                            isSel
+                              ? "border-neutral-900 bg-neutral-900 text-white shadow-md"
+                              : "border-neutral-200 bg-white text-neutral-800 hover:border-neutral-500"
+                          }`}
+                        >
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold ${
+                              isSel ? "bg-white/15 text-white" : "bg-neutral-100 text-neutral-500"
+                            }`}
+                            aria-hidden
+                          >
+                            {letter}
+                          </span>
+                          <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug break-words">
+                            {opt}
+                          </span>
+                          <span
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                              isSel ? "border-white bg-white text-neutral-900" : "border-neutral-200 text-transparent"
+                            }`}
+                            aria-hidden
+                          >
+                            <Check size={13} strokeWidth={3.5} />
+                          </span>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* bottom nav — phones only, sits above the app tab bar */}
+              <div className="sticky bottom-[84px] z-10 flex items-center gap-2.5 rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-[0_8px_28px_rgba(0,0,0,0.10)] backdrop-blur lg:hidden">
+                <button
+                  onClick={goBackCb}
+                  disabled={currentIdx === 0 || phase === "submitting"}
+                  className={`inline-flex h-12 shrink-0 cursor-pointer items-center gap-1 rounded-xl border px-4 text-sm font-semibold transition-colors touch-manipulation ${
+                    currentIdx === 0
+                      ? "border-neutral-100 bg-white text-neutral-300"
+                      : "border-neutral-300 bg-white text-neutral-800 active:bg-neutral-100"
+                  }`}
+                >
+                  <ChevronLeft size={16} /> Back
+                </button>
+                <button
+                  onClick={goNextCb}
+                  disabled={phase === "submitting"}
+                  className="inline-flex h-12 flex-1 cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl bg-neutral-900 px-5 text-sm font-semibold text-white transition-colors hover:bg-neutral-700 active:bg-neutral-800 disabled:opacity-60"
+                >
+                  {phase === "submitting"
+                    ? "Submitting…"
+                    : currentIdx === questions.length - 1
+                      ? "Submit test"
+                      : "Next"}
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+              <p className="hidden sm:block text-center text-xs text-neutral-400 lg:hidden">
+                Keys 1–{Math.min(6, activeQuestion.options.length)} answer · → next · ← back
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {(activeQuestion?.options || []).map((option: string, i: number) => {
-                const isSelected = selectedAnswer === option;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleOptionSelect(option)}
-                    className={`p-4 text-left rounded-xl border text-xs sm:text-sm transition-colors duration-100 font-medium cursor-pointer flex justify-between items-center ${isSelected ? "bg-neutral-950 border-neutral-950 text-white" : "bg-white border-neutral-200/50 text-neutral-800 hover:bg-[#F9F9F9]"}`}
-                  >
-                    <span>{option}</span>
-                    <span
-                      className={`text-[10px] font-mono ${isSelected ? "text-neutral-400" : "text-neutral-200"}`}
-                    >
-                      [KEY_{i + 1}]
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-neutral-200/40">
-              <button
-                onClick={regressSequenceRoute}
-                disabled={currentIdx === 0}
-                className={`px-4 py-2 text-[10px] font-mono uppercase tracking-wider rounded border transition-colors ${currentIdx === 0 ? "text-neutral-300 border-neutral-100 cursor-not-allowed" : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 cursor-pointer"}`}
-              >
-                // BACK
-              </button>
-              <button
-                onClick={advanceSequenceRoute}
-                className="bg-neutral-950 text-white px-5 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#FF3B30] transition-colors cursor-pointer shadow-sm"
-              >
-                {currentIdx === questions.length - 1
-                  ? "COMPILE RECORD"
-                  : "NEXT VALUE"}{" "}
-                <ArrowRight size={10} />
-              </button>
-            </div>
-
-            {activeQuestion?.hint && (
-              <div className="bg-neutral-50 border border-neutral-200/40 p-4 rounded-xl flex items-start gap-3">
-                <HelpCircle
-                  size={14}
-                  className="text-neutral-400 mt-0.5 flex-shrink-0"
+            {/* ── side panel (desktop) ── */}
+            <aside className="hidden lg:block sticky top-24 space-y-4">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-400">
+                    Your progress
+                  </p>
+                  <p className="text-xs font-bold tabular-nums">
+                    {answeredCount}/{questions.length}
+                  </p>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
+                  <div
+                    className="h-full rounded-full bg-neutral-900 transition-all duration-300"
+                    style={{ width: `${(answeredCount / questions.length) * 100}%` }}
+                  />
+                </div>
+                <Palette
+                  questions={questions}
+                  answers={answersLog}
+                  current={currentIdx}
+                  onJump={(i) => setCurrentIdx(i)}
                 />
-                <div className="space-y-0.5">
-                  <span className="text-[9px] font-mono font-bold uppercase text-neutral-400 tracking-wider">
-                    Reference Hint Token
+                <div className="flex items-center gap-4 text-[11px] font-medium text-neutral-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded bg-emerald-500" /> Answered
                   </span>
-                  <p className="text-[11px] text-neutral-400 font-medium leading-normal">
-                    {activeQuestion.hint}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded border border-neutral-300 bg-white" /> Blank
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded bg-neutral-900" /> Current
+                  </span>
+                </div>
+                <TargetsBox targets={activeQuestion.targets} />
+                <div className="flex gap-2">
+                  <button
+                    onClick={goBackCb}
+                    disabled={currentIdx === 0 || phase === "submitting"}
+                    className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-1 rounded-xl border border-neutral-300 bg-white text-sm font-semibold text-neutral-800 transition-colors hover:border-neutral-900 disabled:opacity-40"
+                  >
+                    <ChevronLeft size={15} /> Back
+                  </button>
+                  <button
+                    onClick={goNextCb}
+                    disabled={phase === "submitting"}
+                    className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-neutral-900 text-sm font-semibold text-white transition-colors hover:bg-neutral-700 disabled:opacity-60"
+                  >
+                    {currentIdx === questions.length - 1 ? "Submit" : "Next"}
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+                <button
+                  onClick={() => void submit()}
+                  disabled={phase === "submitting"}
+                  className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:opacity-60"
+                >
+                  <Flag size={14} /> Finish & submit
+                  {unansweredCount > 0 && (
+                    <span className="tabular-nums text-emerald-600">· {unansweredCount} blank</span>
+                  )}
+                </button>
+                <p className="text-[11px] leading-relaxed text-neutral-400">
+                  Blank answers count as wrong. You can jump to any question and
+                  change answers until you submit.
+                </p>
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {phase === "completed" && attempt && (
+          <div className="mx-auto max-w-[760px] space-y-5">
+            {/* score banner */}
+            <div className="rounded-2xl border border-neutral-200 bg-white px-6 py-8 text-center shadow-sm">
+              <ScoreRing score={attempt.total_score} total={reviewItems.length || attempt.total_score || 10} />
+              <h2 className="font-display-hire mt-4 text-3xl font-extrabold tracking-tight tabular-nums">
+                {attempt.total_score}/{reviewItems.length || 10}
+              </h2>
+              <p className="mt-1.5 text-[13px] text-neutral-500">
+                {prettyDate(attempt.attempt_date)} ·{" "}
+                <span className="font-semibold tabular-nums text-neutral-800">
+                  {formatMsCompact(attempt.total_time_ms)}
+                </span>
+                {viewingPastId ? " · showing an older try" : " · saved"}
+              </p>
+              <div className="mt-5 grid grid-cols-3 divide-x divide-neutral-100 rounded-xl border border-neutral-100 bg-neutral-50/60 py-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-400">Right</p>
+                  <p className="font-display-hire mt-0.5 text-lg font-bold tabular-nums text-emerald-700">
+                    {reviewItems.filter((r) => r.is_correct).length}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-400">Wrong</p>
+                  <p className="font-display-hire mt-0.5 text-lg font-bold tabular-nums text-red-600">
+                    {reviewItems.filter((r) => !r.is_correct && r.selected_answer).length}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-400">Not attempted</p>
+                  <p className="font-display-hire mt-0.5 text-lg font-bold tabular-nums text-neutral-500">
+                    {reviewItems.filter((r) => !r.selected_answer).length}
                   </p>
                 </div>
               </div>
-            )}
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white border border-neutral-200/60 p-8 rounded-xl text-center space-y-6 shadow-sm py-12"
-          >
-            <div className="w-12 h-12 bg-neutral-900 text-white rounded-full flex items-center justify-center mx-auto shadow-sm">
-              <CheckCircle size={20} />
+              <div className="mt-5 flex flex-col sm:flex-row justify-center gap-2.5">
+                {viewingPastId && (
+                  <button
+                    onClick={backToToday}
+                    className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-800 hover:border-neutral-900"
+                  >
+                    Today&apos;s answers
+                  </button>
+                )}
+                <Link
+                  href="/hire/leaderboard"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-neutral-900 px-5 text-sm font-semibold text-white hover:bg-neutral-700"
+                >
+                  <Trophy size={14} /> Leaderboard
+                </Link>
+                <Link
+                  href="/hire"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-800 hover:border-neutral-900"
+                >
+                  Other topics
+                </Link>
+              </div>
             </div>
-            <div className="space-y-2">
-              <h3 className="text-base font-black uppercase tracking-tight text-neutral-950">
-                Submissions Log Compiled
+
+            {/* review items */}
+            <div className="space-y-3.5">
+              {reviewItems.map((item, i) => (
+                <article
+                  key={item.mongo_question_id}
+                  className={`rounded-2xl border bg-white p-5 sm:p-6 ${
+                    item.is_correct ? "border-emerald-200" : "border-neutral-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-400">
+                      Q{i + 1}
+                    </p>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                        item.is_correct
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : item.selected_answer
+                            ? "border-red-200 bg-red-50 text-red-700"
+                            : "border-neutral-200 bg-neutral-100 text-neutral-600"
+                      }`}
+                    >
+                      {item.is_correct ? (
+                        <CheckCircle2 size={12} />
+                      ) : item.selected_answer ? (
+                        <XCircle size={12} />
+                      ) : (
+                        <MinusCircle size={12} />
+                      )}
+                      {item.is_correct ? "Right" : item.selected_answer ? "Wrong" : "Not attempted"}
+                    </span>
+                  </div>
+                  <p className="mt-2.5 text-[15px] font-semibold leading-relaxed text-neutral-900">{item.question}</p>
+                  <div className="mt-3">
+                    <MetaChips
+                      difficulty={item.difficulty_level}
+                      subject={item.subject}
+                      subtopic={item.subtopic}
+                    />
+                  </div>
+                  {item.targets && item.targets.length > 0 && (
+                    <p className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
+                      <span className="inline-flex items-center gap-1 font-bold uppercase tracking-wide text-[10px] text-neutral-400">
+                        <Target size={11} /> Good for
+                      </span>
+                      {item.targets.map((t) => (
+                        <span
+                          key={t}
+                          className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] font-semibold text-neutral-600"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                  <div className="mt-3.5 grid gap-2">
+                    <div className={`rounded-xl border p-3.5 ${item.is_correct ? "border-emerald-200 bg-emerald-50/60" : "border-neutral-200 bg-neutral-50"}`}>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-400">
+                        Your answer
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-relaxed text-neutral-900">
+                        {item.selected_answer || "Not attempted (NA)"}
+                      </p>
+                    </div>
+                    {!item.is_correct && (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700">
+                          Right answer
+                        </p>
+                        <p className="mt-1 text-sm font-semibold leading-relaxed text-emerald-900">{item.correct_answer || "—"}</p>
+                      </div>
+                    )}
+                    {item.solution && item.solution.trim() !== "" ? (
+                      <div className="flex gap-2.5 rounded-xl border border-amber-200/70 bg-amber-50/50 p-3.5">
+                        <Lightbulb size={15} className="mt-0.5 shrink-0 text-amber-600" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700">
+                            Solution
+                          </p>
+                          <p className="mt-1 text-sm leading-relaxed whitespace-pre-line text-neutral-700">{item.solution}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2.5 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-3.5">
+                        <Lightbulb size={15} className="mt-0.5 shrink-0 text-neutral-300" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-400">
+                            Solution
+                          </p>
+                          <p className="mt-1 text-sm italic text-neutral-400">(Solution not available)</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {/* history */}
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+              <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-500">
+                <History size={13} /> Your past tries in {meta?.short ?? "topic"}
               </h3>
-              <p className="text-xs text-neutral-400 max-w-sm mx-auto leading-relaxed">
-                Your runtime calculations executed perfectly within{" "}
-                <span className="text-neutral-900 font-bold font-mono">
-                  [{formatClockTime(seconds)}]
-                </span>{" "}
-                parameters. Leadership logs upgraded.
-              </p>
+              {loadingHistory ? (
+                <div className="mt-3 space-y-2 animate-pulse">
+                  {[0, 1].map((i) => (
+                    <div key={i} className="h-12 rounded-xl bg-neutral-100" />
+                  ))}
+                </div>
+              ) : history.length === 0 ? (
+                <p className="mt-2 text-[13px] text-neutral-400">
+                  No past tries yet — finish today&apos;s test and it will show up here.
+                </p>
+              ) : (
+                <div className="mt-1 divide-y divide-neutral-100">
+                  {history.map((h) => (
+                    <button
+                      key={h.id}
+                      onClick={() => loadPastAttempt(h.id)}
+                      className="group flex w-full cursor-pointer items-center justify-between gap-3 py-3.5 text-left touch-manipulation"
+                    >
+                      <span className="text-sm font-medium tabular-nums text-neutral-700 group-active:text-neutral-900">
+                        {prettyDate(h.attempt_date)} ·{" "}
+                        <span className="font-bold text-neutral-900">{h.total_score}/10</span> ·{" "}
+                        {formatMsCompact(h.total_time_ms)}
+                      </span>
+                      <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-neutral-400 group-active:text-neutral-900">
+                        {h.id === attempt.id && !viewingPastId ? "Current" : <>Answers <ChevronRight size={13} /></>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Link
+                href="/hire/history"
+                className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-700 hover:text-neutral-900"
+              >
+                All tries across topics <ChevronRight size={13} />
+              </Link>
             </div>
-            <button
-              onClick={() => router.push("/hire")}
-              className="bg-neutral-950 text-white px-5 py-2.5 rounded-lg font-mono text-[10px] uppercase tracking-wider hover:bg-neutral-800 transition-colors cursor-pointer"
-            >
-              Return To Arena
-            </button>
-          </motion.div>
+          </div>
+        )}
+
+        {phase === "submitting" && (
+          <div className="flex items-center justify-center gap-2 text-neutral-500 py-6">
+            <Activity size={14} className="animate-spin" />
+            <span className="text-[13px] font-medium">Checking your answers…</span>
+          </div>
         )}
       </div>
     </div>
   );
+}
+
+/** Circular score gauge for the review banner. Pure SVG, no animation libs. */
+function ScoreRing({ score, total }: { score: number; total: number }) {
+  const safeTotal = Math.max(1, total);
+  const pct = Math.min(1, Math.max(0, score / safeTotal));
+  const r = 30;
+  const c = 2 * Math.PI * r;
+  const good = pct >= 0.7;
+  const mid = pct >= 0.4;
+  const stroke = good ? "#047857" : mid ? "#b45309" : "#dc2626";
+  return (
+    <div className="relative mx-auto h-24 w-24">
+      <svg viewBox="0 0 72 72" className="h-24 w-24 -rotate-90" aria-hidden>
+        <circle cx="36" cy="36" r={r} fill="none" stroke="#f0ede8" strokeWidth="8" />
+        <circle
+          cx="36"
+          cy="36"
+          r={r}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - pct)}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="font-display-hire text-lg font-extrabold tabular-nums text-neutral-900">
+          {score}/{safeTotal}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Elapsed offset carried over from a stored in-progress session, if any. */
+function elapsedMsRefSafe(
+  stored: { startedAt: number } | null
+): number {
+  if (!stored || typeof stored.startedAt !== "number") return 0;
+  const elapsed = Date.now() - stored.startedAt;
+  if (!Number.isFinite(elapsed) || elapsed < 0) return 0;
+  // Sanity cap: 3h (mirrors the server cap).
+  return Math.min(elapsed, 3 * 60 * 60 * 1000);
 }

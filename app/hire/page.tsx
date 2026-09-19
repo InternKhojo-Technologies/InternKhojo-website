@@ -1,490 +1,966 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+import { HIRE_CATEGORIES, HIRE_SECTIONS } from "@/lib/hire-categories";
 import {
-  Trophy,
-  Lock,
-  Activity,
-  Sparkles,
-  Zap,
-  ArrowRight,
-  Bell,
-  CheckCircle2,
-  Clock,
-  Brain,
+  formatMsCompact,
+  type HireUserStats,
+} from "@/lib/hire-types";
+import { Button } from "@/components/ui/button";
+import {
+  Calculator,
+  Cpu,
+  Puzzle,
+  BookOpen,
   Code2,
-  LineChart,
+  Newspaper,
+  Trophy,
+  Clock,
+  Flame,
+  ChevronRight,
+  ChevronDown,
+  ChevronLeft,
+  ArrowRight,
+  ListChecks,
+  Timer,
+  ShieldAlert,
+  RotateCcw,
+  Lock,
+  CircleCheck,
+  Users,
+  FileCheck,
+  History,
+  Sparkles,
+  CalendarDays,
+  UserRound,
+  TrendingUp,
   Target,
-  Palette,
-  Database,
-  X,
-  UserCheck,
+  BarChart3,
 } from "lucide-react";
 
-export default function GlobalHirePage() {
+const CATEGORY_ICONS: Record<string, typeof Calculator> = {
+  aptitude: Calculator,
+  technical: Cpu,
+  reasoning: Puzzle,
+  verbal: BookOpen,
+  coding: Code2,
+  general: Newspaper,
+};
+
+function iconFor(slug: string) {
+  return CATEGORY_ICONS[slug] ?? ListChecks;
+}
+
+function catBySlug(slug: string) {
+  return HIRE_CATEGORIES.find((c) => c.slug === slug);
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function firstName(full: string) {
+  const t = (full || "").trim().split(/\s+/)[0];
+  return t || "there";
+}
+
+interface TrackAvailability {
+  count: number;
+  available: boolean;
+}
+
+export default function HireLandingHub() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [sessionUser, setSessionUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
+  const [stats, setStats] = useState<HireUserStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<Record<string, TrackAvailability> | null>(null);
+  const [perTest, setPerTest] = useState<number>(10);
+  const [profileName, setProfileName] = useState<string>("");
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  // True when nobody is logged in — the page renders a public preview:
+  // topics visible, stats box blurred with login CTA, every test
+  // click routes through /login.
+  const [isGuest, setIsGuest] = useState(false);
 
-  // Waitlist Modal States (Forced Open)
-  const [notifyModalOpen, setNotifyModalOpen] = useState(true);
-  const [emailInput, setEmailInput] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"candidate" | "recruiter">(
-    "candidate",
+  const isAvailable = useCallback(
+    (slug: string) => availability?.[slug]?.available ?? true,
+    [availability]
   );
-  const [submittingEmail, setSubmittingEmail] = useState(false);
-  const [alreadyApplied, setAlreadyApplied] = useState(false);
 
-  // Floating Toast State
-  const [toast, setToast] = useState<{
-    show: boolean;
-    msg: string;
-    type: "success" | "error";
-  }>({
-    show: false,
-    msg: "",
-    type: "success",
-  });
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-    evaluateUser();
-    return () => {
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-    };
-  }, []);
-
-  // Lock background scroll while the waitlist modal is forced open.
-  useEffect(() => {
-    if (!notifyModalOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [notifyModalOpen]);
-
-  const triggerToast = (msg: string, type: "success" | "error" = "success") => {
-    setToast({ show: true, msg, type });
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(
-      () => setToast((prev) => ({ ...prev, show: false })),
-      4000,
-    );
-  };
-
-  const evaluateUser = async () => {
+  // Logged-in users: session, user, stats and tracks resolve in
+  // parallel so first paint waits on the slowest call only.
+  // Logged-out visitors: NO redirect — public preview with the (now
+  // public) tracks list; stats/profile stay empty and every test click
+  // routes through /login. A stale/invalid token still redirects.
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        setSessionUser(user);
-        setEmailInput(user.email || "");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token ?? "";
+      const headers = (token ? { Authorization: `Bearer ${token}` } : {}) as HeadersInit;
+      const { data: userData } = await supabase.auth.getUser();
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (profile?.role === "recruiter") {
-          setSelectedRole("recruiter");
+      const applyTracks = (tracksJson: {
+        tracks?: Array<{ slug: string; count: number; available: boolean }>;
+        per_test?: unknown;
+      } | null) => {
+        const map: Record<string, TrackAvailability> = {};
+        for (const t of (tracksJson?.tracks ?? []) as Array<{
+          slug: string;
+          count: number;
+          available: boolean;
+        }>) {
+          if (typeof t.slug === "string") {
+            map[t.slug] = {
+              count: Number(t.count ?? 0),
+              available: t.available === true,
+            };
+          }
         }
-      }
+        setAvailability(map);
+        if (Number.isFinite(Number(tracksJson?.per_test))) {
+          setPerTest(Math.max(1, Math.round(Number(tracksJson?.per_test))));
+        }
+      };
 
-      const localWaitlist = localStorage.getItem("waitlist_hire_battlegrounds");
-      if (localWaitlist) setAlreadyApplied(true);
-    } catch (err) {
-      console.error("Identity sync error:", err);
+      if (!userData.user) {
+        if (token) {
+          router.push("/login?redirect=/hire");
+          return;
+        }
+        setIsGuest(true);
+        setRole(null);
+        try {
+          const res = await fetch("/api/hire/tracks", { headers });
+          if (res.ok) applyTracks((await res.json()) as Parameters<typeof applyTracks>[0]);
+        } catch {
+          // preview falls back to default availability
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+      setIsGuest(false);
+
+      const fetchJson = (url: string) =>
+        fetch(url, { headers }).then(async (res) => {
+          if (res.status === 401) throw new Error("__AUTH__");
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || "Could not load. Please try again.");
+          return json;
+        });
+      const [statsJson, tracksJson] = await Promise.all([
+        fetchJson("/api/hire/stats?limit=200"),
+        fetchJson("/api/hire/tracks"),
+      ]);
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, name, avatar_url")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+      const p = profile as { role?: string; name?: string | null; avatar_url?: string | null } | null;
+      setRole(p?.role ?? "candidate");
+      setProfileName((p?.name ?? "").trim());
+      setProfileAvatar(p?.avatar_url ?? null);
+      setStats(statsJson.stats as HireUserStats);
+      applyTracks(tracksJson);
+    } catch (e) {
+      if (e instanceof Error && e.message === "__AUTH__") {
+        router.push("/login?redirect=/hire");
+        return;
+      }
+      setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
-  // REDIRECT TO HOME ON CANCEL/CROSS CLICK
-  const handleExitToHome = () => {
-    router.push("/");
-  };
+  useEffect(() => {
+    setMounted(true);
+    load();
+  }, [load]);
 
-  const handleNotifySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanEmail = emailInput.trim().toLowerCase();
-    if (!cleanEmail) return;
+  const doneToday = useMemo(() => {
+    if (!stats) return new Set<string>();
+    const t = todayStr();
+    return new Set(
+      stats.recentAttempts.filter((a) => a.attempt_date === t).map((a) => a.category)
+    );
+  }, [stats]);
 
-    setSubmittingEmail(true);
+  const streak = stats?.currentStreakDays ?? 0;
+  const [howOpen, setHowOpen] = useState(true);
+  const [perfOpen, setPerfOpen] = useState(true);
 
-    try {
-      const { data: existing } = await supabase
-        .from("waitlist")
-        .select("id")
-        .eq("email", cleanEmail)
-        .eq("source", "hire_battlegrounds");
-
-      if (existing && existing.length > 0) {
-        setAlreadyApplied(true);
-        localStorage.setItem("waitlist_hire_battlegrounds", cleanEmail);
-        triggerToast("You are already registered on the VIP list!");
-        setSubmittingEmail(false);
-        return;
-      }
-
-      const { error } = await supabase.from("waitlist").insert({
-        email: cleanEmail,
-        role: selectedRole,
-        user_id: sessionUser?.id || null,
-        source: "hire_battlegrounds",
-      });
-
-      if (error) {
-        if (error.code === "23505") {
-          setAlreadyApplied(true);
-          localStorage.setItem("waitlist_hire_battlegrounds", cleanEmail);
-          triggerToast("You are already registered on the VIP list!");
-        } else {
-          throw error;
-        }
-      } else {
-        setAlreadyApplied(true);
-        localStorage.setItem("waitlist_hire_battlegrounds", cleanEmail);
-        triggerToast("Saved! Registered for Battlegrounds Early Access!");
-      }
-    } catch (err: any) {
-      console.error("Waitlist Error:", err);
-      triggerToast(err.message || "Failed to join waitlist", "error");
-    } finally {
-      setSubmittingEmail(false);
+  // Per-date practice activity for the LeetCode-style month calendar.
+  // Intensity = tests finished that day; detail = total points.
+  const activity = useMemo(() => {
+    const map: Record<string, { count: number; score: number }> = {};
+    for (const a of stats?.recentAttempts ?? []) {
+      const key = a.attempt_date;
+      if (!key) continue;
+      if (!map[key]) map[key] = { count: 0, score: 0 };
+      map[key].count += 1;
+      map[key].score += a.total_score ?? 0;
     }
-  };
+    return map;
+  }, [stats]);
 
-  const masterChallenges = [
-    {
-      title: "Quantitative Aptitude",
-      desc: "Speed calculations, advanced pattern analysis, and quantitative placement parameters.",
-      scope: "General Screening",
-      icon: Brain,
-      participants: "2.4k Waiting",
-      estTime: "15 Mins",
-    },
-    {
-      title: "Analytical Crosswords",
-      desc: "Critical interview riddles and technical crosswords testing out-of-the-box logic.",
-      scope: "Brain Teasers",
-      icon: Target,
-      participants: "1.8k Waiting",
-      estTime: "20 Mins",
-    },
-    {
-      title: "Algorithmic Logic (DSA)",
-      desc: "Data structures logic, string/array processing, and runtime complexity simulations.",
-      scope: "Core Engineering",
-      icon: Code2,
-      participants: "4.1k Waiting",
-      estTime: "30 Mins",
-    },
-    {
-      title: "Financial Modeling Loop",
-      desc: "Company valuation matrix, balance sheet analytics, and quick financial ratio benchmarks.",
-      scope: "Finance & Analytics",
-      icon: LineChart,
-      participants: "1.2k Waiting",
-      estTime: "25 Mins",
-    },
-    {
-      title: "Growth Hack Simulator",
-      desc: "Funnel performance challenge. Rapid analysis of CAC, LTV, ROAS, and digital marketing loops.",
-      scope: "Growth Marketing",
-      icon: Zap,
-      participants: "950 Waiting",
-      estTime: "20 Mins",
-    },
-    {
-      title: "UI/UX Heuristic Review",
-      desc: "Spot layout hierarchy flaws, accessibility standards, and user psychology law violations.",
-      scope: "Product & Design",
-      icon: Palette,
-      participants: "1.5k Waiting",
-      estTime: "15 Mins",
-    },
-    {
-      title: "Query Optimizer Arena",
-      desc: "Fix broken database structures, optimize relational schema indices, and raw join alignments.",
-      scope: "Systems & Backend",
-      icon: Database,
-      participants: "2.1k Waiting",
-      estTime: "25 Mins",
-    },
-  ];
+  const activeDayCount = useMemo(() => Object.keys(activity).length, [activity]);
 
   if (!mounted) return null;
 
-  if (loading)
-    return (
-      <div className="h-screen w-full bg-[#FAFAFA] flex items-center justify-center px-4">
-        <div className="flex items-center gap-3">
-          <Activity size={16} className="animate-spin text-neutral-400" />
-          <span className="text-xs font-semibold text-neutral-500 tracking-tight">
-            Syncing Battlegrounds Arena...
-          </span>
-        </div>
-      </div>
-    );
+  const isRecruiter = role === "recruiter";
+  const displayName = profileName || "there";
 
   return (
-    <div className="bg-[#FAFAFA] min-h-screen text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white pb-32 antialiased relative overflow-hidden">
-      {/* GRID BACKGROUND */}
-      <div className="absolute inset-0 opacity-[0.025] [background-image:linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] [background-size:40px_40px] pointer-events-none" />
+    <div className="min-h-screen bg-[#FAFAFA] text-neutral-900 antialiased pb-28">
+      <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 pt-6 sm:pt-10 space-y-8">
+        {/* ── Page head ───────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display-hire text-[28px] sm:text-[34px] font-extrabold tracking-tight leading-none">
+              Practice tests
+            </h1>
+            <p className="mt-2 text-[13px] text-neutral-500">
+              New questions every day · one try per topic ·{" "}
+              {!loading && stats && streak > 0 ? (
+                <span className="inline-flex items-center gap-1 font-semibold text-orange-700">
+                  {streak} day{streak === 1 ? "" : "s"} in a row 🔥
+                </span>
+              ) : loading ? (
+                "answers checked instantly"
+              ) : (
+                "answers checked instantly"
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!isGuest && !loading && stats && streak > 0 && (
+              <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 shadow-sm">
+                <Flame size={16} className="text-orange-500" fill="currentColor" />
+                <span className="leading-tight">
+                  <span className="block text-[12px] font-bold">{streak} Day Streak</span>
+                  <span className="block text-[11px] text-neutral-500">Keep it going!</span>
+                </span>
+              </span>
+            )}
+            {!isGuest && role !== "recruiter" && (
+              <Button asChild variant="secondary" size="sm" className="h-10 px-4">
+                <Link href="/hire/history">
+                  <History /> Past tries
+                </Link>
+              </Button>
+            )}
+            <Button asChild size="sm" className="h-10 px-4">
+              <Link href={isGuest ? "/login?redirect=/hire/leaderboard" : "/hire/leaderboard"}>
+                <Trophy /> Leaderboard
+              </Link>
+            </Button>
+          </div>
+        </div>
 
-      {/* TOAST ALERT */}
-      <AnimatePresence>
-        {toast.show && (
+        {isRecruiter && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3.5">
+            <ShieldAlert size={17} className="mt-0.5 shrink-0 text-amber-700" />
+            <p className="text-[13px] leading-relaxed text-amber-900">
+              <span className="font-semibold">You signed in as a recruiter, so this page is view-only.</span>{" "}
+              Tests stay locked for your account to keep the leaderboard fair
+              for students — but you can open every topic and ranking.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5">
+            <p className="text-[13px] font-medium text-red-800">{error}</p>
+            <Button variant="secondary" size="sm" onClick={load}>
+              <RotateCcw /> Try again
+            </Button>
+          </div>
+        )}
+
+        {/* ── Main: topics + sidebar ──────────────────────────────── */}
+        <div className="grid gap-3.5 lg:grid-cols-[1fr_320px] items-start">
+          {/* Topics */}
+          <div className="space-y-8 min-w-0">
+            {HIRE_SECTIONS.map((section, si) => (
+              <section key={section.title} className="space-y-3.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <div>
+                    <h2 className="font-display-hire text-lg font-extrabold tracking-tight">
+                      {section.title}
+                    </h2>
+                    <p className="mt-0.5 text-[13px] text-neutral-500">{section.desc}</p>
+                  </div>
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-neutral-500">
+                    {section.slugs.length} topic{section.slugs.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 min-[1200px]:grid-cols-3 gap-3.5">
+                  {section.slugs.map((slug, i) => {
+                    const cat = catBySlug(slug);
+                    if (!cat) return null;
+                    const Icon = iconFor(cat.slug);
+                    const playable = isAvailable(cat.slug);
+                    const bankCount = availability?.[cat.slug]?.count;
+                    const mine = stats?.perCategory?.[cat.slug];
+                    const finishedToday = doneToday.has(cat.slug);
+                    // Guests preview everything but play nothing — any test
+                    // click sends them to signup (candidate role).
+                    const href = isGuest
+                      ? "/signup?role=candidate"
+                      : isRecruiter
+                        ? "/hire/leaderboard"
+                        : `/hire/${cat.slug}/daily`;
+
+                    const body = (
+                      <>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-neutral-900 text-white">
+                            <Icon size={20} strokeWidth={2} />
+                          </div>
+                          {finishedToday && playable ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                              <CircleCheck size={12} /> Done
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium tabular-nums text-neutral-500">
+                              <Clock size={12} />
+                              {perTest} Qs · {cat.estTime}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-4">
+                          <h3 className="text-[15.5px] font-bold tracking-tight">
+                            {cat.title}
+                          </h3>
+                          <p className="mt-1 min-h-[40px] text-[13px] leading-relaxed text-neutral-500 line-clamp-2">
+                            {cat.desc}
+                          </p>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between gap-2 border-t border-neutral-100 pt-3.5">
+                          <span className="min-w-0 truncate text-xs font-medium text-neutral-500">
+                            {!playable ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <Lock size={12} /> Coming soon
+                                {typeof bankCount === "number"
+                                  ? ` - ${bankCount}/${perTest} ready`
+                                  : ""}
+                              </span>
+                            ) : finishedToday ? (
+                              <span>
+                                Best {mine ? `${mine.bestScore}/${perTest}` : `5/${perTest}`}
+                              </span>
+                            ) : mine ? (
+                              <>Best {mine.bestScore}/{perTest} · tried {mine.attempts}x</>
+                            ) : (
+                              "Not tried yet"
+                            )}
+                          </span>
+                          {!playable ? (
+                            <span className="shrink-0 rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-bold text-neutral-400">
+                              Soon
+                            </span>
+                          ) : (
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-900 px-3.5 py-2 text-xs font-bold text-white transition-transform group-hover:scale-[1.04]">
+                              {isRecruiter ? "View" : finishedToday ? "Answers" : "Start"}
+                              <ChevronRight size={14} strokeWidth={2.5} />
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    );
+
+                    if (!playable) {
+                      return (
+                        <div
+                          key={cat.slug}
+                          aria-disabled
+                          className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5 opacity-70"
+                        >
+                          {body}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <motion.div
+                        key={cat.slug}
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: si * 0.08 + i * 0.05 }}
+                        whileHover={{ y: -3 }}
+                        whileTap={{ scale: 0.995 }}
+                      >
+                        <Link
+                          href={href}
+                          className={`group block rounded-2xl border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow hover:shadow-[0_12px_28px_-12px_rgba(0,0,0,0.25)] hover:border-neutral-900 ${
+                            finishedToday ? "border-emerald-300" : "border-neutral-200"
+                          }`}
+                        >
+                          {body}
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          {/* ── Sidebar ─────────────────────────────────────────── */}
+          <aside className="space-y-3.5 lg:sticky lg:top-4">
+            {/* Hello / progress card — personal progress; not needed for recruiters */}
+            {!isRecruiter && (
+            <div className="rounded-2xl border border-neutral-200 bg-[#F2F7F1] p-4 sm:p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                {profileAvatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profileAvatar}
+                    alt={displayName}
+                    className="h-11 w-11 rounded-full object-cover border border-neutral-200 bg-white"
+                  />
+                ) : isGuest && !loading ? (
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-neutral-900 text-white">
+                    <UserRound size={20} />
+                  </span>
+                ) : (
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-neutral-200 text-sm font-bold text-neutral-600 overflow-hidden">
+                    {loading ? (
+                      <span className="h-full w-full animate-pulse bg-neutral-300/60" />
+                    ) : (
+                      firstName(displayName).charAt(0).toUpperCase()
+                    )}
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className="text-[14px] font-bold tracking-tight truncate">
+                    Hello, {loading ? "…" : isGuest ? "friend" : firstName(displayName)} <span aria-hidden>👋</span>
+                  </p>
+                  <p className="text-[12px] text-neutral-500 leading-snug">
+                    {isGuest
+                      ? "Log in to track your scores!"
+                      : "Keep practicing and improve your scores!"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Stats + calendar — blurred behind a login CTA for guests */}
+              <div className="relative">
+                <div
+                  aria-hidden={isGuest}
+                  className={isGuest ? "blur-[3px] select-none pointer-events-none" : undefined}
+                >
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  {
+                    icon: <BarChart3 size={16} className="text-emerald-600" />,
+                    value: loading || !stats ? "–" : String(stats.completedAttempts),
+                    label: "Tests Finished",
+                  },
+                  {
+                    icon: <Trophy size={15} className="text-amber-500" />,
+                    value: loading || !stats ? "–" : `${stats.bestScore}/${perTest}`,
+                    label: "Best Score",
+                  },
+                  {
+                    icon: <Clock size={15} className="text-blue-600" />,
+                    value: loading || !stats ? "–" : formatMsCompact(stats.avgTimeMs),
+                    label: "Avg. Time",
+                  },
+                ].map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-xl border border-neutral-200/70 bg-white px-2 py-3 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_16px_-8px_rgba(0,0,0,0.2)]"
+                  >
+                    <span className="mx-auto flex justify-center">{s.icon}</span>
+                    <p className="font-display-hire mt-1.5 text-[15px] font-extrabold tabular-nums tracking-tight">
+                      {s.value}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-medium text-neutral-500">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <StreakCalendar
+                activity={activity}
+                streak={streak}
+                loading={loading}
+                activeDayCount={activeDayCount}
+                locked={isGuest}
+              />
+                </div>
+                {isGuest && !loading && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-white/45 p-4 text-center">
+                    <p className="text-[13.5px] font-extrabold tracking-tight">
+                      Log in to track your progress
+                    </p>
+                    <p className="max-w-[220px] text-[12px] leading-snug text-neutral-600">
+                      Streaks, scores and your practice calendar live here.
+                    </p>
+                    <div className="mt-1.5 flex gap-2">
+                      <Link
+                        href="/login?redirect=/hire"
+                        className="inline-flex h-10 items-center rounded-xl bg-neutral-900 px-4 text-[13px] font-bold text-white transition-colors hover:bg-neutral-700"
+                      >
+                        Log in
+                      </Link>
+                      <Link
+                        href="/signup?role=candidate"
+                        className="inline-flex h-10 items-center rounded-xl border border-neutral-300 bg-white px-4 text-[13px] font-bold text-neutral-800 transition-colors hover:border-neutral-900"
+                      >
+                        Sign up
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-emerald-100/70 px-3.5 py-3">
+                <p className="text-[12.5px] font-medium leading-snug text-neutral-800">
+                  “Small progress every day leads to big results.”
+                </p>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-200/60 text-emerald-800">
+                  <TrendingUp size={15} />
+                </span>
+              </div>
+            </div>
+            )}
+
+            {/* Why practice here? */}
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+              <p className="font-display-hire text-[15px] font-extrabold tracking-tight">
+                Why practice here?
+              </p>
+              <div className="mt-3.5 space-y-3">
+                {[
+                  { icon: History, text: "Fresh set of questions every day" },
+                  { icon: RotateCcw, text: "One try per topic, every day" },
+                  { icon: CircleCheck, text: "Auto evaluation & detailed solutions" },
+                  { icon: Users, text: "Compare with other students" },
+                  { icon: TrendingUp, text: "Track your progress over time" },
+                ].map((r) => {
+                  const Icon = r.icon;
+                  return (
+                    <div
+                      key={r.text}
+                      className="flex items-center gap-2.5 rounded-lg -mx-2 px-2 py-1 transition-colors hover:bg-neutral-100"
+                    >                      <Icon size={15} className="shrink-0 text-neutral-700" />
+                      <p className="text-[13px] text-neutral-700">{r.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Leaderboard CTA */}
+            <div className="rounded-2xl bg-neutral-900 p-5 text-white">
+              <Trophy size={22} className="text-amber-400" fill="currentColor" />
+              <p className="font-display-hire mt-3 text-[17px] font-extrabold tracking-tight">
+                Compete on Leaderboard
+              </p>
+              <p className="mt-1 text-[13px] leading-relaxed text-neutral-300">
+                See how you rank among other students and keep improving.
+              </p>
+              <Link
+                href={isGuest ? "/login?redirect=/hire/leaderboard" : "/hire/leaderboard"}
+                className="mt-4 flex h-11 items-center justify-center gap-1.5 rounded-xl bg-white px-4 text-sm font-bold text-neutral-900 hover:bg-neutral-200 transition-colors"
+              >
+                View Leaderboard <ChevronRight size={15} strokeWidth={2.5} />
+              </Link>
+            </div>
+          </aside>
+        </div>
+
+        {/* ── Bottom: how it works + performance + banner ─────────── */}
+        <div className="space-y-3 pt-2">
+          <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+            <button
+              onClick={() => setHowOpen((v) => !v)}
+              aria-expanded={howOpen}
+              className="flex w-full cursor-pointer items-center justify-between gap-3 p-5 text-left"
+            >
+              <span className="inline-flex items-center gap-2.5 text-sm font-bold">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700 transition-colors group-hover:bg-neutral-200">
+                  <FileCheck size={15} />
+                </span>
+                How it works
+              </span>
+              <ChevronDown
+                size={16}
+                className={`shrink-0 text-neutral-400 transition-transform duration-300 ${howOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {howOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.28, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 border-t border-neutral-100 px-5 py-5">
+                    {[
+                      { icon: RotateCcw, text: "One try per topic, every day — a fresh set tomorrow." },
+                      { icon: Users, text: `Same ${perTest} questions for everyone in a topic.` },
+                      { icon: Timer, text: "Each test is timed and answers are checked automatically." },
+                      { icon: Sparkles, text: "Full answers with explanations open up after you submit." },
+                    ].map((r, ri) => {
+                      const Icon = r.icon;
+                      return (
+                        <motion.div
+                          key={r.text}
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.25, delay: ri * 0.06 }}
+                          className="flex items-start gap-2.5 rounded-lg -mx-2 px-2 py-1 transition-colors hover:bg-neutral-50"
+                        >
+                          <Icon size={15} className="mt-0.5 shrink-0 text-neutral-500" />
+                          <p className="text-[13px] leading-relaxed text-neutral-600">{r.text}</p>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+
+          {/* Personal totals — hidden for guests (no data) and recruiters */}
+          {!isGuest && !isRecruiter && (
+          <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+            <div className="flex items-center justify-between gap-3 p-5">
+              <button
+                onClick={() => setPerfOpen((v) => !v)}
+                aria-expanded={perfOpen}
+                className="inline-flex min-w-0 cursor-pointer items-center gap-2.5 text-sm font-bold text-left"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                  <Trophy size={15} />
+                </span>
+                Your performance
+                {!loading && stats && stats.completedAttempts > 0 && (
+                  <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-neutral-600">
+                    {stats.completedAttempts} tests · {stats.totalScore} pts
+                  </span>
+                )}
+                <ChevronDown
+                  size={16}
+                  className={`shrink-0 text-neutral-400 transition-transform duration-300 ${perfOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              <Link
+                href="/hire/history"
+                className="inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold text-neutral-700 hover:text-neutral-900"
+              >
+                See all past tries <ArrowRight size={14} />
+              </Link>
+            </div>
+            <AnimatePresence initial={false}>
+              {perfOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.28, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="border-t border-neutral-100 px-5 py-5">
+                    {loading || !stats ? (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-pulse">
+                        {[0, 1, 2, 3].map((i) => (
+                          <div key={i} className="rounded-xl bg-neutral-50 p-4 space-y-2">
+                            <div className="h-3 w-20 rounded bg-neutral-200/70" />
+                            <div className="h-7 w-14 rounded bg-neutral-200/70" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { label: "Tests finished", value: String(stats.completedAttempts) },
+                          { label: "Total score", value: String(stats.totalScore) },
+                          { label: `Best score (out of ${perTest})`, value: String(stats.bestScore) },
+                          { label: "Average time", value: formatMsCompact(stats.avgTimeMs) },
+                        ].map((s, si) => (
+                          <motion.div
+                            key={s.label}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, delay: si * 0.06 }}
+                            className="rounded-xl bg-neutral-50 p-4 transition-all duration-200 hover:bg-neutral-100 hover:-translate-y-0.5"
+                          >
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">
+                              {s.label}
+                            </p>
+                            <p className="font-display-hire mt-1 text-2xl font-extrabold tabular-nums tracking-tight">
+                              {s.value}
+                            </p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+          )}
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100/60 p-5 sm:px-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-sm text-blue-600">
+              <Target size={22} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display-hire text-[17px] font-extrabold tracking-tight">
+                Get better, one test at a time.
+              </p>
+              <p className="mt-0.5 text-[13px] text-neutral-600">
+                Practice regularly, learn from your mistakes and improve your placement preparation.
+              </p>
+            </div>
+            <Link
+              href={isGuest ? "/login?redirect=/hire/leaderboard" : "/hire/leaderboard"}
+              className="inline-flex h-11 shrink-0 items-center gap-1 rounded-xl bg-neutral-900 px-5 text-sm font-semibold text-white transition-all hover:bg-neutral-700 hover:shadow-[0_8px_20px_-8px_rgba(0,0,0,0.5)] active:scale-[0.98]"
+            >
+              Explore all topics <ChevronRight size={15} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── LeetCode-style practice calendar ────────────────────────────
+   Month grid with prev/next navigation. Tap a green date to see
+   exactly what you practiced that day. */
+function StreakCalendar({
+  activity,
+  streak,
+  loading,
+  activeDayCount,
+  locked = false,
+}: {
+  activity: Record<string, { count: number; score: number }>;
+  streak: number;
+  loading: boolean;
+  activeDayCount: number;
+  /** Locked (guest preview): same visuals, all controls disabled. */
+  locked?: boolean;
+}) {
+  const today = new Date();
+  const [open, setOpen] = useState(true);
+  const [view, setView] = useState({ y: today.getFullYear(), m: today.getMonth() });
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const isCurrentMonth = view.y === today.getFullYear() && view.m === today.getMonth();
+  // Allow browsing back up to 11 months.
+  const oldestAllowed =
+    today.getMonth() - 11 >= 0
+      ? { y: today.getFullYear(), m: today.getMonth() - 11 }
+      : { y: today.getFullYear() - 1, m: today.getMonth() - 11 + 12 };
+  const canGoPrev =
+    view.y > oldestAllowed.y || (view.y === oldestAllowed.y && view.m > oldestAllowed.m);
+
+  const monthLabel = new Date(view.y, view.m, 1).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+  const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+  const leadBlanks = (new Date(view.y, view.m, 1).getDay() + 6) % 7; // Mon = 0
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+    today.getDate()
+  ).padStart(2, "0")}`;
+
+  const monthActive = useMemo(() => {
+    let n = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${view.y}-${String(view.m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      if (activity[iso]) n += 1;
+    }
+    return n;
+  }, [activity, view, daysInMonth]);
+
+  const sel = selected ? activity[selected] : undefined;
+  const selLabel = selected
+    ? (() => {
+        try {
+          return new Date(`${selected}T00:00:00Z`).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            timeZone: "Asia/Kolkata",
+          });
+        } catch {
+          return selected;
+        }
+      })()
+    : null;
+
+  const shift = (dir: 1 | -1) => {
+    setSelected(null);
+    setView((v) => {
+      const nm = v.m + dir;
+      if (nm < 0) return { y: v.y - 1, m: 11 };
+      if (nm > 11) return { y: v.y + 1, m: 0 };
+      return { y: v.y, m: nm };
+    });
+  };
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        disabled={locked}
+        className={`flex w-full items-center justify-between rounded-lg -mx-1 px-1 py-0.5 transition-colors ${locked ? "cursor-default" : "cursor-pointer hover:bg-black/[0.04]"}`}
+      >
+        <p className="inline-flex items-center gap-1.5 text-[13px] font-bold">
+          <CalendarDays size={14} /> Your Streak
+          {!loading && activeDayCount > 0 && (
+            <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-emerald-800">
+              {activeDayCount} active
+            </span>
+          )}
+        </p>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="text-[13px] font-bold text-orange-600 tabular-nums">
+            {loading ? "…" : streak > 0 ? `${streak} day${streak === 1 ? "" : "s"}` : "0 days"}
+          </span>
+          {!locked && (
+          <ChevronDown
+            size={14}
+            className={`text-neutral-500 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+          />
+          )}
+        </span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border ${
-              toast.type === "error"
-                ? "bg-red-950 text-red-200 border-red-800"
-                : "bg-neutral-950 text-neutral-100 border-neutral-800"
-            }`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: "easeInOut" }}
+            className="overflow-hidden"
           >
-            <Sparkles size={16} className="text-[#FF3B30]" />
-            <span className="text-xs font-bold leading-none">{toast.msg}</span>
+            <div className="pt-2.5">
+              <div className="rounded-xl border border-neutral-200/70 bg-white/70 p-3">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => shift(-1)}
+                    disabled={!canGoPrev || locked}
+                    aria-label="Previous month"
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+                  >
+                    <ChevronLeft size={15} />
+                  </button>
+                  <p className="text-[12px] font-bold tabular-nums">{monthLabel}</p>
+                  <button
+                    onClick={() => shift(1)}
+                    disabled={isCurrentMonth || locked}
+                    aria-label="Next month"
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+                  >
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+
+                <div className="mt-2 grid grid-cols-7 gap-1 text-center">
+                  {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+                    <span key={i} className="text-[9px] font-bold text-neutral-400">
+                      {d}
+                    </span>
+                  ))}
+                  {Array.from({ length: leadBlanks }).map((_, i) => (
+                    <span key={`b-${i}`} />
+                  ))}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const iso = `${view.y}-${String(view.m + 1).padStart(2, "0")}-${String(
+                      day
+                    ).padStart(2, "0")}`;
+                    const act = activity[iso];
+                    const isFuture = iso > todayIso;
+                    const isToday = iso === todayIso;
+                    const isSel = selected === iso;
+                    const level = !act
+                      ? 0
+                      : act.count >= 3
+                        ? 3
+                        : act.count === 2
+                          ? 2
+                          : 1;
+                    return (
+                      <button
+                        key={iso}
+                        disabled={!act || isFuture || locked}
+                        onClick={() => setSelected((s) => (s === iso ? null : iso))}
+                        title={
+                          act
+                            ? `${day} — ${act.count} test${act.count === 1 ? "" : "s"} · ${act.score} pts`
+                            : `${day}`
+                        }
+                        className={`flex h-8 items-center justify-center rounded-lg text-[11px] font-semibold tabular-nums transition-all ${
+                          isFuture
+                            ? "cursor-default text-neutral-300"
+                            : level === 3
+                              ? "cursor-pointer bg-emerald-600 text-white hover:scale-110 hover:shadow-[0_4px_10px_-2px_rgba(5,150,105,0.6)]"
+                              : level === 2
+                                ? "cursor-pointer bg-emerald-400 text-white hover:scale-110 hover:shadow-[0_4px_10px_-2px_rgba(52,211,153,0.7)]"
+                                : level === 1
+                                  ? "cursor-pointer bg-emerald-200 text-emerald-900 hover:scale-110"
+                                  : "bg-neutral-100/70 text-neutral-400"
+                        } ${isToday ? "ring-2 ring-neutral-900 ring-offset-1 ring-offset-white" : ""} ${
+                          isSel ? "ring-2 ring-emerald-700 ring-offset-1 ring-offset-white scale-110" : ""
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-2.5 flex items-center justify-between border-t border-neutral-100 pt-2">
+                  <p className="text-[10.5px] font-medium text-neutral-500">
+                    {sel && selLabel ? (
+                      <span className="font-bold text-neutral-800">
+                        {selLabel} · {sel.count} test{sel.count === 1 ? "" : "s"} · {sel.score} pts
+                      </span>
+                    ) : monthActive > 0 ? (
+                      <>{monthActive} day{monthActive === 1 ? "" : "s"} practiced</>
+                    ) : (
+                      <>No practice this month yet</>
+                    )}
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-[9px] font-medium text-neutral-400">
+                    Less
+                    <span className="h-2.5 w-2.5 rounded-[4px] bg-neutral-200" />
+                    <span className="h-2.5 w-2.5 rounded-[4px] bg-emerald-200" />
+                    <span className="h-2.5 w-2.5 rounded-[4px] bg-emerald-400" />
+                    <span className="h-2.5 w-2.5 rounded-[4px] bg-emerald-600" />
+                    More
+                  </span>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* 🔥 POPUP WINDOW WITH REDIRECT ON EXIT */}
-      <AnimatePresence>
-        {notifyModalOpen && (
-          <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-[150] flex items-center justify-center p-4 cursor-pointer"
-            onClick={handleExitToHome}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[2.5rem] border border-neutral-200/80 p-8 sm:p-10 max-w-md w-full shadow-[0_32px_80px_rgba(0,0,0,0.35)] relative space-y-6 cursor-default"
-            >
-              <button
-                onClick={handleExitToHome}
-                className="absolute top-6 right-6 text-neutral-400 hover:text-black transition-colors p-2 rounded-full hover:bg-neutral-100 cursor-pointer"
-                title="Return to Home"
-              >
-                <X size={18} />
-              </button>
-
-              <div className="w-12 h-12 bg-red-50 text-[#FF3B30] rounded-2xl flex items-center justify-center border border-red-100">
-                <Bell size={22} />
-              </div>
-
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 text-[#FF3B30] text-[10px] font-black uppercase tracking-widest rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] animate-pulse" />
-                  Building Phase Active
-                </div>
-                <h3 className="text-2xl font-black text-neutral-950 tracking-tight">
-                  Join Battlegrounds Waitlist
-                </h3>
-                <p className="text-xs text-neutral-500 font-medium leading-relaxed">
-                  Daily challenge arenas are currently being populated. Reserve
-                  early pass access to unlock recruiter leaderboards first.
-                </p>
-              </div>
-
-              {alreadyApplied ? (
-                <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl flex items-center gap-3 text-emerald-800">
-                  <CheckCircle2
-                    size={20}
-                    className="text-emerald-600 flex-shrink-0"
-                  />
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wide">
-                      Already Registered
-                    </p>
-                    <p className="text-[11px] font-medium text-emerald-600 mt-0.5">
-                      Your email is queued on our priority notification pass
-                      list.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleNotifySubmit} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
-                      Your Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="Enter your email address..."
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3.5 text-xs font-bold outline-none focus:border-black transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
-                      Select Account Type
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRole("candidate")}
-                        className={`py-3 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                          selectedRole === "candidate"
-                            ? "bg-black text-white border-black shadow-md"
-                            : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black"
-                        }`}
-                      >
-                        Candidate
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRole("recruiter")}
-                        className={`py-3 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                          selectedRole === "recruiter"
-                            ? "bg-black text-white border-black shadow-md"
-                            : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black"
-                        }`}
-                      >
-                        Recruiter
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={submittingEmail}
-                    className="w-full bg-black text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-neutral-800 transition-colors shadow-lg cursor-pointer flex items-center justify-center gap-2 mt-2"
-                  >
-                    {submittingEmail ? "Registering..." : "Claim Early Pass"}
-                    <ArrowRight size={14} />
-                  </button>
-                </form>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 pt-12 sm:pt-20 space-y-12 sm:space-y-16 relative z-10 pointer-events-none select-none blur-sm">
-        {/* HERO BANNER SECTION */}
-        <div className="relative rounded-[2.5rem] bg-gradient-to-br from-neutral-950 via-neutral-900 to-black p-8 sm:p-14 text-white overflow-hidden shadow-2xl border border-neutral-800">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/10 rounded-full blur-[100px] pointer-events-none" />
-
-          <div className="relative z-10 max-w-2xl space-y-6">
-            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-neutral-200">
-              <span className="w-2 h-2 rounded-full bg-[#FF3B30] animate-pulse" />
-              <span>BETA // Launching Next Phase</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-[1.05]">
-              InternKhojo Battlegrounds<span className="text-[#FF3B30]">.</span>
-            </h1>
-
-            <p className="text-neutral-400 text-xs sm:text-sm leading-relaxed font-medium">
-              Gamified skill arenas designed to test speed, accuracy, and core
-              problem-solving. Earn verified badges, level up your developer
-              score, and get scouted directly by recruiters.
-            </p>
-
-            <div className="pt-2 flex flex-wrap gap-4 items-center">
-              <button className="bg-white text-black px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2">
-                {alreadyApplied ? (
-                  <UserCheck size={14} className="text-emerald-600" />
-                ) : (
-                  <Bell size={14} />
-                )}
-                {alreadyApplied ? "Already Registered" : "Notify Me On Launch"}
-              </button>
-
-              <button className="bg-white/10 text-white border border-white/15 px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2">
-                <Trophy size={14} /> Leaderboard Preview
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* COMING SOON ARENAS GRID */}
-        <div className="space-y-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200/60 pb-4">
-            <div>
-              <h2 className="text-lg font-black tracking-tight text-neutral-950 uppercase flex items-center gap-2">
-                <Zap size={18} className="text-[#FF3B30]" /> Upcoming Challenge
-                Arenas
-              </h2>
-              <p className="text-xs text-neutral-400 font-medium mt-0.5">
-                Daily timed skill tracks going live soon.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-neutral-400 bg-white px-3.5 py-1.5 rounded-full border border-neutral-200/80 shadow-sm w-fit">
-              <Clock size={12} /> Live Sync Scheduled
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {masterChallenges.map((game, i) => {
-              const IconComp = game.icon;
-              return (
-                <div
-                  key={i}
-                  className="bg-white border border-neutral-200/80 rounded-3xl p-6 flex flex-col justify-between relative shadow-sm"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 bg-neutral-50 px-2.5 py-1 rounded-lg border border-neutral-100">
-                        {game.scope}
-                      </span>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-red-600 bg-red-50 border border-red-100 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                        <Lock size={10} /> Locked
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-3 pt-1">
-                      <div className="w-10 h-10 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center text-neutral-800 flex-shrink-0">
-                        <IconComp size={18} />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-black text-neutral-950 tracking-tight leading-snug">
-                          {game.title}
-                        </h3>
-                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                          Duration: {game.estTime}
-                        </p>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-neutral-500 leading-relaxed font-medium">
-                      {game.desc}
-                    </p>
-                  </div>
-
-                  <div className="pt-6 border-t border-neutral-100 mt-6 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-neutral-400 flex items-center gap-1">
-                      <Sparkles size={12} className="text-amber-500" />
-                      {game.participants}
-                    </span>
-
-                    <span className="text-[10px] font-black uppercase tracking-wider text-black flex items-center gap-1">
-                      Remind Me <ArrowRight size={12} />
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
