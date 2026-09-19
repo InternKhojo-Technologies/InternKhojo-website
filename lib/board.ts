@@ -55,6 +55,50 @@ export function stripHtml(html?: string | null, maxChars = 220): string {
   return text.slice(0, maxChars).trimEnd() + "…";
 }
 
+/**
+ * Card-snippet cleaner: some stored briefs mash separate spans together with
+ * zero spaces ("Director, Enterprise Strategylocations5 Locationsposted
+ * onPosted YesterdayR-288239"). Re-pad spaces around known field values
+ * (title, location…), split camelCase / letter-digit joins, decode common
+ * entities, then truncate. Restores readability without changing facts.
+ */
+export function cleanSnippet(
+  html?: string | null,
+  maxChars = 240,
+  parts: Array<string | null | undefined> = [],
+): string {
+  if (!html) return "";
+  let text = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'");
+  for (const part of parts) {
+    const p = part?.trim();
+    if (p) text = text.split(p).join(` ${p} `);
+  }
+  // Shield "24x7"-style multipliers so the digit split below leaves them
+  // alone (private-use char, restored afterwards — regex lookbehind would
+  // break older browsers, so plain replace/split is used instead).
+  const X_SHIELD = "\uE000";
+  text = text.replace(/(\d)[x](\d)/g, `$1${X_SHIELD}$2`);
+  text = text
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    // Lowercase-letter + digit only ("locations5" → "locations 5").
+    // Digit + letter is left alone so "B2B" stays intact.
+    .replace(/([a-z])(\d)/g, "$1 $2")
+    .split(X_SHIELD)
+    .join("x")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?%])/g, "$1")
+    .trim();
+  if (text.length <= maxChars) return text;
+  return text.slice(0, maxChars).trimEnd() + "…";
+}
+
 export function timeAgo(dateString?: string | null): string {
   if (!dateString) return "Recently";
   const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);

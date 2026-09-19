@@ -26,7 +26,6 @@ import {
   applyHostLabel,
   getPostContact,
   payLabel,
-  stripHtml,
 } from "@/lib/board";
 import {
   adaptExternalPost,
@@ -60,7 +59,6 @@ interface BoardClientProps {
   configured: boolean;
 }
 
-/** News-style dateline: "7:00 am on Sunday, 6 September 2026". */
 function postDateLine(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -226,15 +224,16 @@ export default function BoardClient({
     [hrefForCb, router],
   );
 
-  // Live search: typing in any text filter navigates (debounced) so results
-  // update side-by-side while typing. Skipped when values match the URL.
+  // Live search: typing in any text filter navigates (short debounce) so
+  // results follow keystrokes with no laggy feel. The feed dims + announces
+  // busy instantly via `navigating` below. Skipped when values match the URL.
   useEffect(() => {
     const changed =
       query.trim() !== initialQuery.q.trim() ||
       locationFilter.trim() !== initialQuery.loc.trim() ||
       skillFilter.trim() !== initialQuery.skill.trim();
     if (!changed) return;
-    const t = setTimeout(() => pushFilters({}), 450);
+    const t = setTimeout(() => pushFilters({}), 300);
     return () => clearTimeout(t);
   }, [query, locationFilter, skillFilter, initialQuery, pushFilters]);
 
@@ -273,14 +272,24 @@ export default function BoardClient({
     [items],
   );
 
+  // Page-level scroll: the feed flows with the document (no nested scroller),
+  // so jump with a fixed header offset. The old scrollIntoView + snap
+  // container fought the browser and felt "stuck".
   const scrollToCard = (index: number) => {
     const el = cardRefs.current[index];
-    if (!el) return;
+    if (!el || typeof window === "undefined") return;
     const reduce =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const top = el.getBoundingClientRect().top + window.scrollY - 88;
+    window.scrollTo({ top: Math.max(top, 0), behavior: reduce ? "auto" : "smooth" });
     setActiveIndex(index);
+  };
+
+  const scrollToTop = () => {
+    if (typeof window === "undefined") return;
+    const reduce =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
   };
 
   // Clamped position — never points past the current page.
@@ -375,10 +384,11 @@ export default function BoardClient({
       <p aria-live="polite" className="sr-only">
         {total.toLocaleString("en-IN")} posts found
       </p>
-      {/* Filter bar — command-bar surface */}
+      {/* Filter bar — scrolls away with the page (not sticky) so cards never
+          get trapped underneath it and users don't have to scroll back up. */}
       <section
         aria-label="Filter opportunities"
-        className="sticky top-16 z-30 -mx-4 border-y border-slate-200/70 bg-white/80 px-4 py-3 shadow-[0_12px_32px_-20px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 sm:top-20 sm:mx-0 sm:rounded-[20px] sm:border sm:px-4 sm:shadow-[0_16px_48px_-20px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.9)]"
+        className="relative z-10 -mx-4 border-y border-slate-200/70 bg-white/80 px-4 py-3 shadow-[0_12px_32px_-20px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 sm:mx-0 sm:rounded-[20px] sm:border sm:px-4 sm:shadow-[0_16px_48px_-20px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.9)]"
       >
         <form
           className="flex items-center gap-2"
@@ -669,13 +679,15 @@ export default function BoardClient({
         )}
       </section>
 
-      {/* News-style feed */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_230px]">
-        <div>
+      {/* Feed flows with the page — one shared scrollbar, no nested box,
+          no snap fighting. */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1fr_230px]">
+        <div className="min-w-0">
           <div
             ref={feedRef}
             aria-label="Opportunities feed"
-            className="max-h-none space-y-4 overflow-visible lg:max-h-[78vh] lg:space-y-3 lg:overflow-y-auto lg:snap-y lg:snap-mandatory lg:scroll-smooth lg:rounded-[24px] lg:border lg:border-slate-200/70 lg:bg-slate-100/50 lg:p-3 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+            aria-busy={navigating}
+            className={`scroll-mt-24 space-y-3 transition-opacity duration-200 ${navigating ? "opacity-60" : ""}`}
           >
             {!configured && (
               <div className="rounded-[24px] border-2 border-dashed border-slate-200 bg-white/90 p-12 text-center shadow-sm backdrop-blur">
@@ -723,9 +735,6 @@ export default function BoardClient({
             {enriched.map(({ post, job, contact }, idx) => {
               const isIntern = post.kind === "internship";
               const paid = post.paid;
-              const snippet =
-                stripHtml(job.description, 240) ||
-                "Full brief available on the detail page.";
               const dateline = postDateLine(job.created_at);
               const deadline = shortDate(job.deadline);
               const left = daysUntil(job.deadline);
@@ -746,30 +755,15 @@ export default function BoardClient({
                   onKeyDown={(e) => {
                     if (e.key === "Enter") openDetail();
                   }}
-                  className={`group relative snap-start cursor-pointer scroll-mt-32 overflow-hidden rounded-[20px] border bg-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.05),0_12px_32px_-16px_rgba(0,0,0,0.18)] backdrop-blur transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-[3px] hover:shadow-[0_2px_4px_rgba(0,0,0,0.05),0_28px_56px_-20px_rgba(0,0,0,0.3)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 focus-visible:ring-4 focus-visible:ring-slate-900/10 motion-reduce:transition-none motion-reduce:transform-none ${
-                    isIntern
-                      ? "border-slate-200/80 border-l-4 border-l-amber-400 hover:border-slate-300 hover:border-l-amber-500"
-                      : "border-slate-200/80 border-l-4 border-l-blue-600 hover:border-slate-300 hover:border-l-blue-700"
-                  }`}
+                  className="cursor-pointer scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-slate-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 sm:p-5"
                 >
-                  {/* Hover glow edge — opacity only */}
-                  <div
-                    aria-hidden
-                    className={`pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-reduce:transition-none ${
-                      isIntern
-                        ? "bg-gradient-to-br from-amber-400/[0.09] via-transparent to-orange-500/[0.07]"
-                        : "bg-gradient-to-br from-blue-600/[0.08] via-transparent to-indigo-500/[0.06]"
-                    }`}
-                  />
-                <div className="relative">
-                  {/* Body */}
-                  <div className="relative min-w-0 flex-1 p-4">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                      {/* Type ribbon — internship vs job at a glance */}
+                  <div className="min-w-0">
+                    {/* Single status row: type + pay + deadline. No duplicate labels. */}
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
                       <span
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${
                           isIntern
-                            ? "bg-amber-400 text-black"
+                            ? "bg-amber-100 text-amber-900"
                             : "bg-slate-950 text-white"
                         }`}
                       >
@@ -780,24 +774,22 @@ export default function BoardClient({
                         )}
                         {isIntern ? "Internship" : "Job"}
                       </span>
-                      <p
-                        className={`flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] ${
-                          isIntern ? "text-amber-700" : "text-blue-700"
-                        }`}
+                      <span
+                        className={`inline-flex items-center gap-1.5 font-semibold ${paid ? "text-emerald-700" : "text-slate-400"}`}
                       >
-                        <span className="inline-flex items-center gap-1.5">
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${isIntern ? "bg-amber-500" : "bg-blue-600"}`}
-                          />
-                          {isIntern ? "Internship" : "Full-time job"}
-                        </span>
-                        <span aria-hidden className="font-normal text-slate-300">
-                          /
-                        </span>
-                      <span className="font-medium normal-case tracking-normal text-slate-400">
-                        {post.mode ?? (isIntern ? "Training role" : "Full-time")}
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${paid ? "bg-emerald-500" : "bg-slate-300"}`}
+                        />
+                        {paid ? payLabel(job) : "Unpaid"}
                       </span>
-                    </p>
+                      {deadline && (
+                        <span
+                          className={`ml-auto inline-flex items-center gap-1 font-medium ${urgent ? "text-red-600" : "text-slate-400"}`}
+                        >
+                          <CalendarClock size={12} />
+                          Apply by {deadline}
+                        </span>
+                      )}
                     </div>
                     <h2
                       id={`board-title-${job.id}`}
@@ -805,149 +797,95 @@ export default function BoardClient({
                     >
                       {job.title}
                     </h2>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-slate-400">
-                        <span>
-                          post by{" "}
-                          <span className="font-bold text-slate-700">
-                            {orgName}
-                          </span>
-                        </span>
-                        {dateline ? (
-                          <>
-                            <span aria-hidden className="text-slate-300">·</span>
-                            <span className="normal-case tracking-normal">{dateline}</span>
-                          </>
-                        ) : null}
+                    <p className="mt-1 flex items-center gap-1.5 text-[13px] text-slate-500">
+                      <span className="truncate font-semibold text-slate-700">
+                        {orgName}
+                      </span>
+                      <span aria-hidden className="shrink-0 text-slate-300">•</span>
+                      <span className="inline-flex min-w-0 items-center gap-1">
+                        <MapPin size={12} className="shrink-0 text-slate-400" />
+                        <span className="truncate">{job.location || "Remote"}</span>
+                      </span>
+                    </p>
+                    {dateline ? (
+                      <p className="mt-1 font-mono text-[10.5px] uppercase tracking-[0.06em] text-slate-400">
+                        Posted <span className="normal-case tracking-normal">{dateline}</span>
                       </p>
+                    ) : null}
 
-                    <p className="mt-1.5 line-clamp-2 text-pretty text-[13px] leading-relaxed text-slate-600">
-                      {snippet}
+                    {/* One quiet meta line — tenure/mode, field, source. */}
+                    <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
+                      <span>
+                        {isIntern
+                          ? job.duration
+                            ? `${job.duration} tenure`
+                            : "Internship"
+                          : (post.mode ?? "Full-time")}
+                      </span>
+                      {post.field && (
+                        <>
+                          <span aria-hidden className="text-slate-300">•</span>
+                          <span className="capitalize">{post.field}</span>
+                        </>
+                      )}
+                      {post.source && (
+                        <>
+                          <span aria-hidden className="text-slate-300">•</span>
+                          <span>Via {post.source}</span>
+                        </>
+                      )}
                     </p>
 
-                    {/* Compact fact strip — every key field on the face */}
-                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.06em] ${
-                            paid
-                              ? "border-emerald-200/80 bg-emerald-50 text-emerald-800"
-                              : "border-slate-200 bg-slate-50 text-slate-500"
-                          }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${paid ? "bg-emerald-500" : "bg-slate-300"}`}
-                          />
-                          {paid ? payLabel(job) : "Unpaid"}
-                        </span>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-slate-600 shadow-sm">
-                          <MapPin size={11} className="text-slate-400" />
-                          <span className="max-w-[140px] truncate">{job.location || "Remote"}</span>
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em] shadow-sm ${
-                            isIntern
-                              ? "border-amber-200/80 bg-amber-50/70 text-amber-800"
-                              : "border-slate-200 bg-white text-slate-600"
-                          }`}
-                        >
-                          {isIntern ? (
-                            <GraduationCap size={11} className="text-amber-600" />
-                          ) : (
-                            <Briefcase size={11} className="text-slate-400" />
-                          )}
-                          {isIntern ? `Tenure: ${job.duration || "—"}` : (post.mode ?? "Full-time")}
-                        </span>
-                        {deadline && (
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.06em] shadow-sm ${
-                              urgent
-                                ? "border-red-200 bg-red-50 text-red-700"
-                                : "border-slate-200 bg-white text-slate-600"
-                            }`}
-                          >
-                            <span className="relative flex h-1.5 w-1.5">
-                              {urgent && (
-                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60 motion-reduce:animate-none" />
-                              )}
-                              <span
-                                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${urgent ? "bg-red-500" : "bg-slate-300"}`}
-                              />
-                            </span>
-                            <CalendarClock size={11} />
-                            Apply by {deadline}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-2 truncate font-mono text-[10.5px] uppercase tracking-[0.06em] text-slate-400">
-                        {post.mode ? `${post.mode} • ` : ""}
-                        {post.field ? `Field: ${post.field} • ` : ""}
-                        {post.source ? `Via ${post.source}` : "Open web post"}
-                      </p>
-
-                      {/* Direct contact — visible before applying */}
+                      {/* Direct contact — one quiet row, no boxed callout. */}
                       {(contact.emails.length > 0 ||
                         contact.phones.length > 0) && (
-                      <div
-                        className="mt-2.5 rounded-2xl border border-emerald-200/70 bg-gradient-to-b from-emerald-50/90 to-white p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-emerald-100/40"
-                        onClick={stop}
-                      >
-                          <p className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
-                            <span className="relative flex h-1.5 w-1.5">
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-50 motion-reduce:animate-none" />
-                              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            </span>
-                            Apply directly
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {contact.emails.map((email) => (
-                              <a
-                                key={email}
-                                href={`mailto:${email}`}
-                                onClick={stop}
-                                className="inline-flex max-w-full items-center gap-1.5 rounded-xl border border-emerald-200/80 bg-white px-2.5 py-1.5 text-[11px] font-bold text-emerald-900 shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-px hover:border-emerald-400 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 motion-reduce:transform-none"
-                              >
-                                <Mail
-                                  size={12}
-                                  className="shrink-0 text-emerald-600"
-                                />
-                                <span className="truncate">{email}</span>
-                              </a>
-                            ))}
-                            {contact.phones.map((p) => (
-                              <a
-                                key={p.tel}
-                                href={`tel:${p.tel}`}
-                                onClick={stop}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/80 bg-white px-2.5 py-1.5 text-[11px] font-bold text-emerald-900 shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-px hover:border-emerald-400 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 motion-reduce:transform-none"
-                              >
-                                <Phone
-                                  size={12}
-                                  className="shrink-0 text-emerald-600"
-                                />
-                                {p.display}
-                              </a>
-                            ))}
-                          </div>
+                        <div
+                          className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]"
+                          onClick={stop}
+                        >
+                          {contact.emails.map((email) => (
+                            <a
+                              key={email}
+                              href={`mailto:${email}`}
+                              onClick={stop}
+                              className="inline-flex min-w-0 items-center gap-1 font-semibold text-emerald-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            >
+                              <Mail size={13} className="shrink-0" />
+                              <span className="truncate">{email}</span>
+                            </a>
+                          ))}
+                          {contact.phones.map((p) => (
+                            <a
+                              key={p.tel}
+                              href={`tel:${p.tel}`}
+                              onClick={stop}
+                              className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            >
+                              <Phone size={13} className="shrink-0" />
+                              {p.display}
+                            </a>
+                          ))}
                         </div>
                       )}
 
-                    {/* Footer — official apply from the face card */}
-                    <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
+                    {/* Footer — official apply + details. */}
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
                         {contact.officialApplyUrl ? (
                           <a
                             href={contact.officialApplyUrl}
                             target="_blank"
                             rel="nofollow noopener noreferrer"
                             onClick={stop}
-                            className="inline-flex min-w-0 items-center gap-1.5 rounded-sm text-xs font-bold text-slate-900 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+                            className="inline-flex min-w-0 items-center gap-1 text-[13px] font-semibold text-slate-900 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
                           >
                             <span className="truncate">
                               Apply at{" "}
                               {applyHostLabel(contact.officialApplyUrl)}
                             </span>
-                            <ExternalLink size={12} className="shrink-0 text-slate-400" />
+                            <ExternalLink size={13} className="shrink-0 text-slate-400" />
                           </a>
                         ) : (
-                          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-slate-400">
+                          <span className="text-[13px] text-slate-400">
                             Tap card for full post
                           </span>
                         )}
@@ -957,12 +895,11 @@ export default function BoardClient({
                             e.stopPropagation();
                             openDetail();
                           }}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-slate-950 px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-px hover:bg-black hover:shadow-[0_14px_28px_-10px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 active:translate-y-0 motion-reduce:transform-none"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-slate-950 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
                         >
                           Details <ArrowUpRight size={13} />
                         </button>
                       </div>
-                    </div>
                   </div>
                 </article>
               );
@@ -1036,26 +973,75 @@ export default function BoardClient({
               </p>
             </nav>
           )}
+
+          {/* Mobile feed navigator — sticky bottom bar (side rail is desktop-only) */}
+          {enriched.length > 1 && (
+            <div className="sticky bottom-3 z-20 mt-3 lg:hidden">
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur">
+                <button
+                  type="button"
+                  onClick={() => scrollToCard(Math.max(safeActive - 1, 0))}
+                  disabled={safeActive <= 0}
+                  aria-label="Previous post"
+                  className="flex h-11 flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 disabled:opacity-30"
+                >
+                  <ArrowUp size={17} /> Prev
+                </button>
+                <span className="shrink-0 px-1 text-xs font-bold tabular-nums text-slate-500">
+                  {safeActive + 1} / {enriched.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    scrollToCard(Math.min(safeActive + 1, enriched.length - 1))
+                  }
+                  disabled={safeActive >= enriched.length - 1}
+                  aria-label="Next post"
+                  className="flex h-11 flex-1 items-center justify-center gap-1 rounded-xl bg-slate-950 text-sm font-bold text-white disabled:opacity-30"
+                >
+                  Next <ArrowDown size={17} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Side rail: shorts nav + verified roles */}
-        <aside className="space-y-3 lg:sticky lg:top-40 lg:self-start">
-          <div className="hidden rounded-[20px] border border-slate-200/70 bg-white/80 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_16px_40px_-24px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:block">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+        {/* Side rail: feed navigator + verified roles */}
+        <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
+          <div className="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:block">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
               Feed position
             </p>
-            <p className="mt-1 font-mono text-2xl font-extrabold tabular-nums tracking-tight text-slate-950">
+            <p className="mt-1 text-2xl font-extrabold tabular-nums tracking-tight text-slate-950">
               {enriched.length === 0 ? "0 / 0" : `${safeActive + 1} / ${enriched.length}`}
             </p>
+            {/* Progress bar — fills as you move through the feed */}
+            {enriched.length > 0 && (
+              <div
+                className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"
+                role="progressbar"
+                aria-valuemin={1}
+                aria-valuemax={enriched.length}
+                aria-valuenow={safeActive + 1}
+                aria-label="Feed progress"
+              >
+                <div
+                  className="h-full rounded-full bg-slate-950 transition-[width] duration-300"
+                  style={{
+                    width: `${((safeActive + 1) / enriched.length) * 100}%`,
+                  }}
+                />
+              </div>
+            )}
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => scrollToCard(Math.max(safeActive - 1, 0))}
                 disabled={safeActive <= 0}
                 aria-label="Previous post"
-                className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-2.5 text-slate-600 shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-px hover:border-slate-900 hover:text-slate-950 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-30 disabled:hover:translate-y-0 disabled:hover:shadow-sm motion-reduce:transform-none"
+                className="flex h-12 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 shadow-sm transition-colors hover:border-slate-900 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
               >
-                <ArrowUp size={15} />
+                <ArrowUp size={18} /> Prev
               </button>
               <button
                 type="button"
@@ -1064,28 +1050,37 @@ export default function BoardClient({
                 }
                 disabled={safeActive >= enriched.length - 1}
                 aria-label="Next post"
-                className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-2.5 text-slate-600 shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-px hover:border-slate-900 hover:text-slate-950 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-30 disabled:hover:translate-y-0 disabled:hover:shadow-sm motion-reduce:transform-none"
+                className="flex h-12 items-center justify-center gap-1 rounded-xl bg-slate-950 text-sm font-bold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
               >
-                <ArrowDown size={15} />
+                Next <ArrowDown size={18} />
               </button>
             </div>
-            <p className="mt-3 text-[10px] leading-relaxed text-slate-400">
-              Tip: use <kbd className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono font-bold text-slate-500">↑</kbd>{" "}
-              <kbd className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono font-bold text-slate-500">↓</kbd> or swipe to move like shorts.
-            </p>
-            {enriched.length > 0 && (
-              <div
-                className="mt-3 flex max-h-40 flex-wrap gap-1 overflow-hidden"
-                aria-hidden
-              >
+            {/* Jump dots — tap any dot to jump straight to that post */}
+            {enriched.length > 1 && (
+              <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Jump to a post">
                 {enriched.slice(0, 30).map((_, i) => (
-                  <span
+                  <button
                     key={i}
-                    className={`h-1.5 flex-1 rounded-full transition-opacity duration-300 ${i === safeActive ? "bg-slate-950" : "bg-slate-200"}`}
+                    type="button"
+                    onClick={() => scrollToCard(i)}
+                    aria-label={`Go to post ${i + 1}`}
+                    aria-current={i === safeActive ? "true" : undefined}
+                    className={`h-2.5 min-w-2.5 flex-1 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${i === safeActive ? "bg-slate-950" : "bg-slate-200 hover:bg-slate-400"}`}
                   />
                 ))}
               </div>
             )}
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="mt-3 w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-500 transition-colors hover:border-slate-900 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            >
+              Back to top
+            </button>
+            <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
+              Tip: use <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono font-bold text-slate-500">↑</kbd>{" "}
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono font-bold text-slate-500">↓</kbd> keys to move between posts.
+            </p>
           </div>
 
           <div className="relative overflow-hidden rounded-[20px] border border-emerald-200/70 bg-gradient-to-b from-emerald-50/90 to-white p-5 shadow-[0_16px_40px_-24px_rgba(16,185,129,0.4)]">
