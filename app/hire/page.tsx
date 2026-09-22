@@ -40,6 +40,15 @@ import {
   TrendingUp,
   Target,
   BarChart3,
+  Layers,
+  Brain,
+  Cloud,
+  Globe,
+  FileCode2,
+  Coffee,
+  ShieldCheck,
+  Terminal,
+  Network,
 } from "lucide-react";
 
 const CATEGORY_ICONS: Record<string, typeof Calculator> = {
@@ -47,6 +56,16 @@ const CATEGORY_ICONS: Record<string, typeof Calculator> = {
   technical: Cpu,
   reasoning: Puzzle,
   verbal: BookOpen,
+  swe: Layers,
+  aiml: Brain,
+  cloud: Cloud,
+  webdev: Globe,
+  cpp: FileCode2,
+  java: Coffee,
+  cybersecurity: ShieldCheck,
+  python: Terminal,
+  "system-design": Network,
+  // Legacy (removed from UI, kept so old stats still resolve an icon).
   coding: Code2,
   general: Newspaper,
 };

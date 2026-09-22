@@ -3,8 +3,15 @@ export type HireCategorySlug =
   | "technical"
   | "reasoning"
   | "verbal"
-  | "coding"
-  | "general";
+  | "swe"
+  | "aiml"
+  | "cloud"
+  | "webdev"
+  | "cpp"
+  | "java"
+  | "cybersecurity"
+  | "python"
+  | "system-design";
 
 export interface HireCategory {
   slug: string;
@@ -21,6 +28,13 @@ export interface HireCategory {
    * only its own labelled slice.
    */
   labelFilter?: string;
+  /**
+   * Optional `tech_subject` filter inside the collection. The
+   * technical_mcqs bank holds every CS subject mixed together, so each
+   * technical track reads only its own subject slice via
+   * `{ tech_subject: { $in: subjectFilter } }`.
+   */
+  subjectFilter?: string[];
 }
 
 /**
@@ -45,10 +59,16 @@ export const HIRE_CATEGORIES: HireCategory[] = [
     slug: "technical",
     title: "Technical MCQ",
     short: "Technical",
-    desc: "Computer basics: operating systems, databases, networks and OOP.",
+    desc: "Core CS: operating systems, databases, networks and OOP.",
     scope: "Core Engineering",
     estTime: "20 Mins",
     collection: "technical_mcqs",
+    subjectFilter: [
+      "Operating Systems",
+      "Database Management Systems",
+      "Computer Networks",
+      "Object Oriented Programming",
+    ],
   },
   {
     slug: "reasoning",
@@ -71,22 +91,94 @@ export const HIRE_CATEGORIES: HireCategory[] = [
     labelFilter: "Verbal Ability",
   },
   {
-    slug: "coding",
-    title: "Coding Logic (DSA)",
-    short: "Coding",
-    desc: "Arrays, strings and basic problem solving with code logic.",
-    scope: "DSA & Logic",
-    estTime: "30 Mins",
-    collection: "dsa_questions",
+    slug: "swe",
+    title: "SWE / SDE",
+    short: "SWE/SDE",
+    desc: "Software engineering: SDLC, Agile, testing and development practices.",
+    scope: "Engineering Roles",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["Software Engineering"],
   },
   {
-    slug: "general",
-    title: "General Awareness",
-    short: "General",
-    desc: "Everyday knowledge: business, tech news and current affairs.",
-    scope: "Awareness",
-    estTime: "10 Mins",
-    collection: "general_questions",
+    slug: "aiml",
+    title: "AI / ML",
+    short: "AI/ML",
+    desc: "Artificial intelligence and machine learning concepts.",
+    scope: "Core Engineering",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["Artificial Intelligence & Machine Learning"],
+  },
+  {
+    slug: "cloud",
+    title: "Cloud Computing",
+    short: "Cloud",
+    desc: "Cloud concepts: services, deployment models and platforms.",
+    scope: "Core Engineering",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["Cloud Computing"],
+  },
+  {
+    slug: "webdev",
+    title: "Web Development",
+    short: "Web Dev",
+    desc: "Web basics: HTML, CSS and JavaScript.",
+    scope: "Development",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["Web Development (HTML/CSS/JS)"],
+  },
+  {
+    slug: "cpp",
+    title: "C / C++ Programming",
+    short: "C/C++",
+    desc: "C and C++ programming: syntax, pointers, OOP and problem logic.",
+    scope: "Programming",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["C Programming", "C++ Programming"],
+  },
+  {
+    slug: "java",
+    title: "Java Programming",
+    short: "Java",
+    desc: "Java programming: OOP, collections, exceptions and JVM basics.",
+    scope: "Programming",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["Java Programming"],
+  },
+  {
+    slug: "cybersecurity",
+    title: "Cyber Security",
+    short: "Security",
+    desc: "Security basics: threats, cryptography and safe practices.",
+    scope: "Core Engineering",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["Cyber Security"],
+  },
+  {
+    slug: "python",
+    title: "Python Programming",
+    short: "Python",
+    desc: "Python programming: syntax, data structures and OOP.",
+    scope: "Programming",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["Python Programming"],
+  },
+  {
+    slug: "system-design",
+    title: "System Design",
+    short: "System Design",
+    desc: "System design: scalability, databases, caching and architecture.",
+    scope: "Engineering Roles",
+    estTime: "20 Mins",
+    collection: "technical_mcqs",
+    subjectFilter: ["System Design"],
   },
 ];
 
@@ -109,13 +201,20 @@ export function categoryToCollection(slug: string): string {
 /**
  * MongoDB filter scoping a category to its slice of a shared collection.
  * Returns {} when the category owns its whole collection.
+ * - `labelFilter`  -> { category_label: ... } (aptitude bank)
+ * - `subjectFilter` -> { tech_subject: { $in: [...] } } (technical bank)
  * Review hydration (attempt/submit) intentionally ignores this so older
  * submissions always resolve, even if bank labelling changes later.
  */
 export function categoryMongoFilter(slug: string): Record<string, unknown> {
   const known = HIRE_CATEGORIES.find((c) => c.slug === slug);
-  if (known?.labelFilter) return { category_label: known.labelFilter };
-  return {};
+  if (!known) return {};
+  const filter: Record<string, unknown> = {};
+  if (known.labelFilter) filter.category_label = known.labelFilter;
+  if (known.subjectFilter && known.subjectFilter.length > 0) {
+    filter.tech_subject = { $in: known.subjectFilter };
+  }
+  return filter;
 }
 
 /** Metadata lookup with graceful fallback for custom slugs. */
@@ -160,13 +259,19 @@ export const HIRE_SECTIONS: HireSection[] = [
   },
   {
     title: "Computer Science",
-    desc: "Core CS subjects and coding logic.",
-    slugs: ["technical", "coding"],
-  },
-  {
-    title: "General Awareness",
-    desc: "Business, tech and everyday awareness.",
-    slugs: ["general"],
+    desc: "Core CS subjects, engineering roles and programming languages.",
+    slugs: [
+      "technical",
+      "swe",
+      "aiml",
+      "cloud",
+      "webdev",
+      "cpp",
+      "java",
+      "cybersecurity",
+      "python",
+      "system-design",
+    ],
   },
 ];
 
@@ -181,6 +286,16 @@ export function boardLabel(slug: string): string {
     reasoning: "Logical",
     verbal: "Verbal",
     technical: "Technical",
+    swe: "SWE/SDE",
+    aiml: "AI/ML",
+    cloud: "Cloud",
+    webdev: "Web Dev",
+    cpp: "C/C++",
+    java: "Java",
+    cybersecurity: "Security",
+    python: "Python",
+    "system-design": "System Design",
+    // Legacy tracks (removed from the UI but kept readable in history).
     coding: "Coding",
     general: "General",
   };

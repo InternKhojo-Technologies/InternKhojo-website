@@ -17,6 +17,7 @@ import {
   LogOut,
   LayoutDashboard,
   UserCircle,
+  Coins,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -504,6 +505,15 @@ export default function Navbar() {
                           >
                             <UserCircle size={16} /> Edit Profile
                           </Link>
+                          {profile?.role === "candidate" && (
+                            <Link
+                              href="/rewards"
+                              onClick={() => setProfileOpen(false)}
+                              className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors font-medium"
+                            >
+                              <Coins size={16} /> Coin Rewards
+                            </Link>
+                          )}
                           <button
                             onClick={handleLogout}
                             className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium"

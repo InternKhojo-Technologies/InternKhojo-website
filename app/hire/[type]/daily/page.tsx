@@ -13,6 +13,11 @@ import {
   type HireReviewItem,
   type HireSafeQuestion,
 } from "@/lib/hire-types";
+import {
+  beautifyOption,
+  beautifySolutionSteps,
+  beautifyText,
+} from "@/lib/beautify-math";
 import ElapsedTimer from "@/app/hire/_components/elapsed-timer";
 import {
   Timer,
@@ -274,6 +279,9 @@ export default function DailyTestRunner() {
   const [attempt, setAttempt] = useState<HireAttempt | null>(null);
   const [reviewItems, setReviewItems] = useState<HireReviewItem[]>([]);
   const [viewingPastId, setViewingPastId] = useState<string | null>(null);
+  // Coins credited for THIS submit (from POST /api/hire/submit). Null on
+  // past-try views and when the payout was skipped/failed.
+  const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   // True when boot was asked for a ?review= try that could not be loaded.
@@ -407,6 +415,7 @@ export default function DailyTestRunner() {
           setAttempt(reviewData.attempt);
           setReviewItems((reviewData.items ?? []) as HireReviewItem[]);
           setViewingPastId(reviewId);
+          setCoinsEarned(null);
           setPhase("completed");
           loadHistory();
           return;
@@ -429,6 +438,7 @@ export default function DailyTestRunner() {
         clearStoredProgress(slug);
         setAttempt(attemptRes.json.attempt as HireAttempt);
         setReviewItems((attemptRes.json.items ?? []) as HireReviewItem[]);
+        setCoinsEarned(null);
         setPhase("completed");
         loadHistory();
         return;
@@ -527,6 +537,7 @@ export default function DailyTestRunner() {
             clearStoredProgress(slug);
             setAttempt(retryJson.attempt as HireAttempt);
             setReviewItems((retryJson.items ?? []) as HireReviewItem[]);
+            setCoinsEarned(null);
             setPhase("completed");
             loadHistory();
             return;
@@ -537,6 +548,11 @@ export default function DailyTestRunner() {
         clearStoredProgress(slug);
         setAttempt(json.attempt as HireAttempt);
         setReviewItems((json.items ?? []) as HireReviewItem[]);
+        setCoinsEarned(
+          typeof json?.coins_credited?.total === "number"
+            ? (json.coins_credited.total as number)
+            : null
+        );
         setPhase("completed");
         loadHistory();
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -656,6 +672,7 @@ export default function DailyTestRunner() {
       setAttempt(json.attempt as HireAttempt);
       setReviewItems((json.items ?? []) as HireReviewItem[]);
       setViewingPastId(attemptId);
+      setCoinsEarned(null);
       setPhase("completed");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
@@ -873,7 +890,7 @@ export default function DailyTestRunner() {
                       </p>
                     </div>
                     <p className="mt-3 text-[16.5px] sm:text-[17px] font-medium leading-[1.65] text-neutral-900">
-                      {activeQuestion.question}
+                      {beautifyText(activeQuestion.question)}
                     </p>
                     <div className="mt-4 border-t border-neutral-100 pt-3.5">
                       <MetaChips
@@ -916,7 +933,7 @@ export default function DailyTestRunner() {
                             {letter}
                           </span>
                           <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug break-words">
-                            {opt}
+                            {beautifyOption(opt)}
                           </span>
                           <span
                             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
@@ -1050,6 +1067,14 @@ export default function DailyTestRunner() {
                 </span>
                 {viewingPastId ? " · showing an older try" : " · saved"}
               </p>
+              {coinsEarned !== null && !viewingPastId && (
+                <p className="mx-auto mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1.5 text-[13px] font-bold tabular-nums text-amber-800 ring-1 ring-inset ring-amber-200">
+                  🪙 +{coinsEarned.toFixed(2)} coins earned ·{" "}
+                  <Link href="/rewards" className="underline underline-offset-2 hover:text-amber-900">
+                    View rewards
+                  </Link>
+                </p>
+              )}
               <div className="mt-5 grid grid-cols-3 divide-x divide-neutral-100 rounded-xl border border-neutral-100 bg-neutral-50/60 py-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-400">Right</p>
@@ -1126,7 +1151,7 @@ export default function DailyTestRunner() {
                       {item.is_correct ? "Right" : item.selected_answer ? "Wrong" : "Not attempted"}
                     </span>
                   </div>
-                  <p className="mt-2.5 text-[15px] font-semibold leading-relaxed text-neutral-900">{item.question}</p>
+                  <p className="mt-2.5 text-[15px] font-semibold leading-relaxed text-neutral-900">{beautifyText(item.question)}</p>
                   <div className="mt-3">
                     <MetaChips
                       difficulty={item.difficulty_level}
@@ -1155,7 +1180,7 @@ export default function DailyTestRunner() {
                         Your answer
                       </p>
                       <p className="mt-1 text-sm font-semibold leading-relaxed text-neutral-900">
-                        {item.selected_answer || "Not attempted (NA)"}
+                        {item.selected_answer ? beautifyOption(item.selected_answer) : "Not attempted (NA)"}
                       </p>
                     </div>
                     {!item.is_correct && (
@@ -1163,17 +1188,26 @@ export default function DailyTestRunner() {
                         <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700">
                           Right answer
                         </p>
-                        <p className="mt-1 text-sm font-semibold leading-relaxed text-emerald-900">{item.correct_answer || "—"}</p>
+                        <p className="mt-1 text-sm font-semibold leading-relaxed text-emerald-900">{beautifyOption(item.correct_answer) || "—"}</p>
                       </div>
                     )}
                     {item.solution && item.solution.trim() !== "" ? (
                       <div className="flex gap-2.5 rounded-xl border border-amber-200/70 bg-amber-50/50 p-3.5">
                         <Lightbulb size={15} className="mt-0.5 shrink-0 text-amber-600" />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700">
                             Solution
                           </p>
-                          <p className="mt-1 text-sm leading-relaxed whitespace-pre-line text-neutral-700">{item.solution}</p>
+                          <div className="mt-1.5 space-y-2">
+                            {beautifySolutionSteps(item.solution).map((step, si) => (
+                              <p
+                                key={si}
+                                className="text-sm leading-[1.7] text-neutral-700"
+                              >
+                                {step}
+                              </p>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     ) : (

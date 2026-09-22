@@ -16,6 +16,13 @@ import {
   type HireReviewItem,
   type HireSubmissionItem,
 } from "@/lib/hire-types";
+import {
+  COINS_PER_QUIZ_ATTEMPT,
+  COIN_SOURCE_QUIZ_ATTEMPT,
+  coinSourceCorrectAnswers,
+  isCandidateRole,
+  quizCoinTotal,
+} from "@/lib/coins";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -47,6 +54,11 @@ function answersEqual(selected: string, correct: string): boolean {
  * ([{ mongo_id, selected_answer, is_correct }]) and performs a SINGLE INSERT
  * into `hire_daily_attempts` with total_score, total_time_ms, submissions
  * and is_completed=true. Returns the evaluated review payload to the client.
+ *
+ * Coins & Rewards (candidates ONLY): after the attempt is saved, credits
+ * +1.00 "Quiz Attempt" and +1.50 per correct answer via the
+ * `credit_candidate_coins` RPC. Best-effort — a coin failure never fails the
+ * submit. Recruiters / non-candidate roles earn nothing.
  */
 export async function POST(request: NextRequest) {
   const auth = await requireHireAuth(request);
@@ -263,6 +275,44 @@ export async function POST(request: NextRequest) {
 
     const attempt = attemptRow as HireAttempt;
 
+    // ── Coins & Rewards: candidates only, best-effort ──────────────────────
+    // Idempotency comes from the UNIQUE (user, category, day) attempt above:
+    // a duplicate submit 409s before reaching here, so each test pays once.
+    // Direct wallet writes are blocked by RLS — only the RPC may credit.
+    let coinsCredited: { attempt: number; correct: number; total: number } | null =
+      null;
+    if (isCandidateRole(auth.auth.role)) {
+      try {
+        const plan = quizCoinTotal(totalScore);
+        const payouts = [{ coins: COINS_PER_QUIZ_ATTEMPT, source: COIN_SOURCE_QUIZ_ATTEMPT }];
+        if (totalScore > 0) {
+          payouts.push({ coins: plan.correct, source: coinSourceCorrectAnswers(totalScore) });
+        }
+        let credited = 0;
+        for (const p of payouts) {
+          const { error: coinError } = await supabase.rpc("credit_candidate_coins", {
+            target_user_id: user.id,
+            coins_to_add: p.coins,
+            source_label: p.source,
+          });
+          if (coinError) throw coinError;
+          credited = Math.round((credited + p.coins) * 100) / 100;
+        }
+        coinsCredited = { attempt: plan.attempt, correct: plan.correct, total: credited };
+      } catch (err) {
+        // Non-blocking: the test is saved; the user just misses this payout
+        // (visible in server logs for diagnosis).
+        console.error("[hire/submit] coin credit failed (non-blocking):", {
+          message: err instanceof Error ? err.message : String(err),
+          category,
+          attemptDate,
+          user_id: user.id,
+          totalScore,
+        });
+        coinsCredited = null;
+      }
+    }
+
     const items: HireReviewItem[] = graded.map((g) => ({
       mongo_question_id: g.id,
       question: g.t.question,
@@ -282,6 +332,7 @@ export async function POST(request: NextRequest) {
       items,
       total_score: totalScore,
       total_time_ms: totalTimeMs,
+      coins_credited: coinsCredited,
     });
   } catch (err: unknown) {
     console.error("[hire/submit] failed:", err);

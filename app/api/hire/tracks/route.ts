@@ -23,7 +23,7 @@ export interface HireTrackAvailability {
 
 /**
  * GET /api/hire/tracks
- * Per-track question-bank availability for the six hire categories.
+ * Per-track question-bank availability for the hire categories.
  * PUBLIC — no login needed. It only exposes question counts per track
  * (no user data), so logged-out visitors can preview the topic list.
  * A track is `available` only when its MongoDB collection holds a full

@@ -92,10 +92,18 @@ export default function HireHistoryPage() {
   }, [load]);
 
   const grouped = useMemo(() => {
-    return HIRE_SECTIONS.map((sec) => ({
+    const known = HIRE_SECTIONS.map((sec) => ({
       ...sec,
       rows: attempts.filter((a) => sec.slugs.includes(a.category)),
     })).filter((g) => g.rows.length > 0);
+    // Legacy attempts (coding/general tracks removed from the UI) still
+    // show under "Other" instead of disappearing from history.
+    const knownSlugs = new Set(HIRE_SECTIONS.flatMap((s) => s.slugs));
+    const legacy = attempts.filter((a) => !knownSlugs.has(a.category));
+    if (legacy.length > 0) {
+      known.push({ title: "Other", desc: "Older topics.", slugs: [], rows: legacy });
+    }
+    return known;
   }, [attempts]);
 
   if (!mounted) return null;
