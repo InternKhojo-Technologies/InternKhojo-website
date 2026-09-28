@@ -167,7 +167,7 @@ async function buildReviewItems(
     .filter((o): o is NonNullable<typeof o> => o !== null);
 
   const collection = await getQuestionsCollection(categoryToCollection(category));
-  const byId = new Map<string, { question: string; options: string[]; correct_answer: string; solution: string; difficulty_level?: string; subject?: string; subtopic?: string; targets: string[] }>();
+  const byId = new Map<string, { question: string; options: string[]; correct_answer: string; solution: string; difficulty_level?: string; subject?: string; subtopic?: string; targets: string[]; language: string | null }>();
 
   const hydrate = (d: Record<string, unknown>) => {
     const meta: HireDocMeta = docMeta(d);
@@ -180,6 +180,10 @@ async function buildReviewItems(
       subject: meta.subject,
       subtopic: meta.subtopic,
       targets: meta.targets,
+      language:
+        typeof d.language === "string" && d.language.trim() !== ""
+          ? d.language.trim()
+          : null,
     };
   };
 
@@ -260,6 +264,7 @@ async function buildReviewItems(
       subject: doc?.subject,
       subtopic: doc?.subtopic,
       targets: doc?.targets ?? [],
+      language: doc?.language ?? null,
     };
   };
 

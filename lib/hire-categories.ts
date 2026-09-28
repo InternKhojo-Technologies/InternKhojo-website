@@ -11,7 +11,8 @@ export type HireCategorySlug =
   | "java"
   | "cybersecurity"
   | "python"
-  | "system-design";
+  | "system-design"
+  | "dsa";
 
 export interface HireCategory {
   slug: string;
@@ -180,6 +181,17 @@ export const HIRE_CATEGORIES: HireCategory[] = [
     collection: "technical_mcqs",
     subjectFilter: ["System Design"],
   },
+  {
+    slug: "dsa",
+    title: "DSA Practice",
+    short: "DSA",
+    desc: "Mixed DSA MCQs: outputs, errors, complexity and theory across Arrays, Trees, Graphs and more.",
+    scope: "Data Structures",
+    estTime: "15 Mins",
+    // Owns the whole dsa_questions bank (Master_Question_Bank) — the daily
+    // set is a deterministic mixed slice, like every other leaderboard track.
+    collection: "dsa_questions",
+  },
 ];
 
 /** Normalize a `[type]` route param to a safe slug. Returns null when invalid. */
@@ -258,6 +270,11 @@ export const HIRE_SECTIONS: HireSection[] = [
     slugs: ["aptitude", "reasoning", "verbal"],
   },
   {
+    title: "Data Structures & Algorithms",
+    desc: "Mixed DSA MCQs every day, plus a custom practice mode.",
+    slugs: ["dsa"],
+  },
+  {
     title: "Computer Science",
     desc: "Core CS subjects, engineering roles and programming languages.",
     slugs: [
@@ -295,6 +312,7 @@ export function boardLabel(slug: string): string {
     cybersecurity: "Security",
     python: "Python",
     "system-design": "System Design",
+    dsa: "DSA",
     // Legacy tracks (removed from the UI but kept readable in history).
     coding: "Coding",
     general: "General",

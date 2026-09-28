@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
     // Load ground truth from MongoDB.
     const collection = await getQuestionsCollection(categoryToCollection(category));
     const objectIds = ids.map(toObjectIdOrNull).filter((o): o is NonNullable<typeof o> => o !== null);
-    const truth = new Map<string, { correct: string; question: string; options: string[]; solution: string; difficulty?: string; subject?: string; subtopic?: string; targets: string[] }>();
+    const truth = new Map<string, { correct: string; question: string; options: string[]; solution: string; difficulty?: string; subject?: string; subtopic?: string; targets: string[]; language: string | null }>();
     const hydrate = (d: Record<string, unknown>) => {
       const meta: HireDocMeta = docMeta(d);
       return {
@@ -171,6 +171,10 @@ export async function POST(request: NextRequest) {
         subject: meta.subject,
         subtopic: meta.subtopic,
         targets: meta.targets,
+        language:
+          typeof d.language === "string" && d.language.trim() !== ""
+            ? (d.language.trim() as string)
+            : null,
       };
     };
     if (objectIds.length > 0) {
@@ -325,6 +329,7 @@ export async function POST(request: NextRequest) {
       subject: g.t.subject,
       subtopic: g.t.subtopic,
       targets: g.t.targets,
+      language: g.t.language,
     }));
 
     return NextResponse.json({

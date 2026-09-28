@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     const questions: HireSafeQuestion[] = [];
     for (const id of picked) {
       const d = byId.get(id) as
-        | { question?: unknown; options?: unknown; difficulty_level?: unknown }
+        | { question?: unknown; options?: unknown; difficulty_level?: unknown; language?: unknown }
         | undefined;
       if (!d) continue;
       const question = typeof d.question === "string" ? d.question : "";
@@ -115,6 +115,12 @@ export async function GET(request: NextRequest) {
         subject: meta.subject,
         subtopic: meta.subtopic,
         targets: meta.targets,
+        // DSA bank snippet language (C / C++ …) for the UI badge; other
+        // banks have no `language` field so this stays null for them.
+        language:
+          typeof d.language === "string" && d.language.trim() !== ""
+            ? d.language.trim()
+            : null,
       });
     }
 

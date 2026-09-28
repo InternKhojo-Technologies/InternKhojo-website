@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { getCategoryMeta, normalizeCategory } from "@/lib/hire-categories";
+import { isDsaCategory } from "@/lib/dsa";
 import {
   formatMsCompact,
   todayDateString,
@@ -18,6 +19,13 @@ import {
   beautifySolutionSteps,
   beautifyText,
 } from "@/lib/beautify-math";
+import {
+  DsaInlineHtml,
+  DsaOptionHtml,
+  DsaQuestionBody,
+  DsaSolutionHtml,
+  LanguageBadge,
+} from "@/app/hire/_components/dsa-html";
 import ElapsedTimer from "@/app/hire/_components/elapsed-timer";
 import {
   Timer,
@@ -257,6 +265,9 @@ export default function DailyTestRunner() {
   const rawType = params?.type;
   const slug = normalizeCategory(Array.isArray(rawType) ? rawType[0] : rawType);
   const meta = slug ? getCategoryMeta(slug) : null;
+  // DSA bank text is rich HTML with code + math — it gets the DSA formatter
+  // + native rendering instead of the plain-text beautifier.
+  const isDsa = isDsaCategory(slug);
 
   const [phase, setPhase] = useState<Phase>("checking");
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -883,22 +894,40 @@ export default function DailyTestRunner() {
                   transition={{ duration: 0.22, ease: "easeOut" }}
                   className="space-y-4"
                 >
-                  <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-7">
+                  <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-7 min-w-0 overflow-hidden">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-400">
                         Question {currentIdx + 1} of {questions.length}
                       </p>
+                      {isDsa && <LanguageBadge language={activeQuestion.language} />}
                     </div>
-                    <p className="mt-3 text-[16.5px] sm:text-[17px] font-medium leading-[1.65] text-neutral-900">
-                      {beautifyText(activeQuestion.question)}
-                    </p>
-                    <div className="mt-4 border-t border-neutral-100 pt-3.5">
-                      <MetaChips
-                        difficulty={activeQuestion.difficulty_level}
-                        subject={activeQuestion.subject}
-                        subtopic={activeQuestion.subtopic}
-                      />
-                    </div>
+                    {isDsa ? (
+                      <>
+                        <div className="mt-3">
+                          <MetaChips
+                            difficulty={activeQuestion.difficulty_level}
+                            subject={activeQuestion.subject}
+                            subtopic={activeQuestion.subtopic}
+                          />
+                        </div>
+                        <div className="mt-3 min-w-0">
+                          <DsaQuestionBody html={activeQuestion.question} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mt-3 text-[16.5px] sm:text-[17px] font-medium leading-[1.65] text-neutral-900">
+                          {beautifyText(activeQuestion.question)}
+                        </p>
+                        <div className="mt-4 border-t border-neutral-100 pt-3.5">
+                          <MetaChips
+                            difficulty={activeQuestion.difficulty_level}
+                            subject={activeQuestion.subject}
+                            subtopic={activeQuestion.subtopic}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-2.5" role="radiogroup" aria-label={`Options for question ${currentIdx + 1}`}>
@@ -932,9 +961,13 @@ export default function DailyTestRunner() {
                           >
                             {letter}
                           </span>
-                          <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug break-words">
-                            {beautifyOption(opt)}
-                          </span>
+                          {isDsa ? (
+                            <DsaOptionHtml html={opt} />
+                          ) : (
+                            <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug break-words">
+                              {beautifyOption(opt)}
+                            </span>
+                          )}
                           <span
                             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
                               isSel ? "border-white bg-white text-neutral-900" : "border-neutral-200 text-transparent"
@@ -1124,7 +1157,7 @@ export default function DailyTestRunner() {
               {reviewItems.map((item, i) => (
                 <article
                   key={item.mongo_question_id}
-                  className={`rounded-2xl border bg-white p-5 sm:p-6 ${
+                  className={`rounded-2xl border bg-white p-5 sm:p-6 min-w-0 overflow-hidden ${
                     item.is_correct ? "border-emerald-200" : "border-neutral-200"
                   }`}
                 >
@@ -1151,14 +1184,32 @@ export default function DailyTestRunner() {
                       {item.is_correct ? "Right" : item.selected_answer ? "Wrong" : "Not attempted"}
                     </span>
                   </div>
-                  <p className="mt-2.5 text-[15px] font-semibold leading-relaxed text-neutral-900">{beautifyText(item.question)}</p>
-                  <div className="mt-3">
-                    <MetaChips
-                      difficulty={item.difficulty_level}
-                      subject={item.subject}
-                      subtopic={item.subtopic}
-                    />
-                  </div>
+                  {isDsa ? (
+                    <>
+                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+                        <MetaChips
+                          difficulty={item.difficulty_level}
+                          subject={item.subject}
+                          subtopic={item.subtopic}
+                        />
+                        <LanguageBadge language={item.language} />
+                      </div>
+                      <div className="mt-3 min-w-0">
+                        <DsaQuestionBody html={item.question} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-2.5 text-[15px] font-semibold leading-relaxed text-neutral-900">{beautifyText(item.question)}</p>
+                      <div className="mt-3">
+                        <MetaChips
+                          difficulty={item.difficulty_level}
+                          subject={item.subject}
+                          subtopic={item.subtopic}
+                        />
+                      </div>
+                    </>
+                  )}
                   {item.targets && item.targets.length > 0 && (
                     <p className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
                       <span className="inline-flex items-center gap-1 font-bold uppercase tracking-wide text-[10px] text-neutral-400">
@@ -1179,16 +1230,34 @@ export default function DailyTestRunner() {
                       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-400">
                         Your answer
                       </p>
-                      <p className="mt-1 text-sm font-semibold leading-relaxed text-neutral-900">
-                        {item.selected_answer ? beautifyOption(item.selected_answer) : "Not attempted (NA)"}
-                      </p>
+                      {item.selected_answer ? (
+                        isDsa ? (
+                          <div className="mt-1 text-sm font-semibold leading-relaxed text-neutral-900">
+                            <DsaInlineHtml html={item.selected_answer} />
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-sm font-semibold leading-relaxed text-neutral-900">
+                            {beautifyOption(item.selected_answer)}
+                          </p>
+                        )
+                      ) : (
+                        <p className="mt-1 text-sm font-semibold leading-relaxed text-neutral-900">
+                          Not attempted (NA)
+                        </p>
+                      )}
                     </div>
                     {!item.is_correct && (
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5">
                         <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700">
                           Right answer
                         </p>
-                        <p className="mt-1 text-sm font-semibold leading-relaxed text-emerald-900">{beautifyOption(item.correct_answer) || "—"}</p>
+                        {isDsa ? (
+                          <div className="mt-1 text-sm font-semibold leading-relaxed text-emerald-900">
+                            <DsaInlineHtml html={item.correct_answer || "—"} />
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-sm font-semibold leading-relaxed text-emerald-900">{beautifyOption(item.correct_answer) || "—"}</p>
+                        )}
                       </div>
                     )}
                     {item.solution && item.solution.trim() !== "" ? (
@@ -1198,16 +1267,20 @@ export default function DailyTestRunner() {
                           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700">
                             Solution
                           </p>
-                          <div className="mt-1.5 space-y-2">
-                            {beautifySolutionSteps(item.solution).map((step, si) => (
-                              <p
-                                key={si}
-                                className="text-sm leading-[1.7] text-neutral-700"
-                              >
-                                {step}
-                              </p>
-                            ))}
-                          </div>
+                          {isDsa ? (
+                            <DsaSolutionHtml html={item.solution} />
+                          ) : (
+                            <div className="mt-1.5 space-y-2">
+                              {beautifySolutionSteps(item.solution).map((step, si) => (
+                                <p
+                                  key={si}
+                                  className="text-sm leading-[1.7] text-neutral-700"
+                                >
+                                  {step}
+                                </p>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (

@@ -39,6 +39,11 @@ export interface HireSafeQuestion {
   subtopic?: string;
   /** Where this question helps: ["Placements", "Bank Exams"]. */
   targets?: string[];
+  /**
+   * Code-snippet language for DSA questions (e.g. "C", "C++").
+   * Null/absent for theory questions and non-DSA tracks.
+   */
+  language?: string | null;
 }
 
 export interface HireAnswerInput {
@@ -59,6 +64,8 @@ export interface HireReviewItem {
   subject?: string;
   subtopic?: string;
   targets?: string[];
+  /** Code-snippet language for DSA questions (e.g. "C", "C++"). */
+  language?: string | null;
 }
 
 /**

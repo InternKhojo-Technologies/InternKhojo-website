@@ -49,6 +49,8 @@ import {
   ShieldCheck,
   Terminal,
   Network,
+  Binary,
+  Dumbbell,
 } from "lucide-react";
 
 const CATEGORY_ICONS: Record<string, typeof Calculator> = {
@@ -56,6 +58,7 @@ const CATEGORY_ICONS: Record<string, typeof Calculator> = {
   technical: Cpu,
   reasoning: Puzzle,
   verbal: BookOpen,
+  dsa: Binary,
   swe: Layers,
   aiml: Brain,
   cloud: Cloud,
@@ -368,6 +371,9 @@ export default function HireLandingHub() {
                             {cat.desc}
                           </p>
                         </div>
+                        {/* DSA renders its own Daily test / Practice buttons below
+                            the card, so its dead Start pill row is skipped. */}
+                        {cat.slug !== "dsa" && (
                         <div className="mt-4 flex items-center justify-between gap-2 border-t border-neutral-100 pt-3.5">
                           <span className="min-w-0 truncate text-xs font-medium text-neutral-500">
                             {!playable ? (
@@ -398,6 +404,7 @@ export default function HireLandingHub() {
                             </span>
                           )}
                         </div>
+                        )}
                       </>
                     );
 
@@ -410,6 +417,54 @@ export default function HireLandingHub() {
                         >
                           {body}
                         </div>
+                      );
+                    }
+
+                    // DSA gets two doors: the daily mixed test (leaderboard)
+                    // and the custom practice drill (no stakes). A card-wide
+                    // link can't hold a second link, so DSA renders its own
+                    // card with two explicit buttons instead.
+                    if (cat.slug === "dsa") {
+                      const practiceHref = isGuest
+                        ? "/signup?role=candidate"
+                        : isRecruiter
+                          ? "/hire/leaderboard"
+                          : "/hire/dsa/practice";
+                      return (
+                        <motion.div
+                          key={cat.slug}
+                          initial={{ opacity: 0, y: 14 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: si * 0.08 + i * 0.05 }}
+                          whileHover={{ y: -3 }}
+                          whileTap={{ scale: 0.995 }}
+                        >
+                          <div
+                            className={`rounded-2xl border bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow hover:shadow-[0_12px_28px_-12px_rgba(0,0,0,0.25)] hover:border-neutral-900 ${
+                              finishedToday ? "border-emerald-300" : "border-neutral-200"
+                            }`}
+                          >
+                            {body}
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <Link
+                                href={href}
+                                className="inline-flex h-10 items-center justify-center gap-1 rounded-xl bg-neutral-900 px-3 text-xs font-bold text-white transition-colors hover:bg-neutral-700"
+                              >
+                                {isRecruiter ? "View" : finishedToday ? "Answers" : "Daily test"}
+                                <ChevronRight size={14} strokeWidth={2.5} />
+                              </Link>
+                              <Link
+                                href={practiceHref}
+                                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-violet-300 bg-violet-50 px-3 text-xs font-bold text-violet-900 transition-colors hover:border-violet-500 hover:bg-violet-100"
+                              >
+                                <Dumbbell size={14} /> Practice
+                              </Link>
+                            </div>
+                            <p className="mt-2 text-center text-[11px] text-neutral-400">
+                              Daily counts for leaderboard · practice never does
+                            </p>
+                          </div>
+                        </motion.div>
                       );
                     }
 
