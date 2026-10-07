@@ -201,7 +201,7 @@ export default function LoginContent() {
           <img
             src="/logo-4.png"
             className="w-8 h-8 object-contain"
-            alt="Logo"
+            alt="InternKhojo logo"
           />
 
           <span className="font-black text-xl tracking-tighter text-black">
@@ -211,18 +211,12 @@ export default function LoginContent() {
 
         <div className="relative z-10 my-auto max-w-lg w-full">
           <div className="space-y-8">
-            <h2 className="text-5xl font-[950] tracking-tight leading-[1.05] text-black uppercase">
+            <p className="text-5xl font-[950] tracking-tight leading-[1.05] text-black uppercase">
               Welcome Back to <br />
               the{" "}
               <span className="text-black italic underline decoration-red-600 decoration-4">
                 Ecosystem.
               </span>
-            </h2>
-
-            <p className="text-gray-500 font-medium text-lg leading-relaxed">
-              Log in to manage your active early-career applications, handle
-              incoming talent assessment responses, or orchestrate
-              high-authority boardroom interactions.
             </p>
 
             <div className="space-y-4 pt-4">
@@ -254,7 +248,7 @@ export default function LoginContent() {
           <img
             src="/logo-4.png"
             className="w-7 h-7 object-contain"
-            alt="Logo"
+            alt="InternKhojo logo"
           />
 
           <span className="font-black text-xl tracking-tighter text-black">
@@ -282,6 +276,7 @@ export default function LoginContent() {
               <input
                 type="email"
                 placeholder="Email address"
+                aria-label="Email address"
                 className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -297,6 +292,7 @@ export default function LoginContent() {
               <input
                 type="password"
                 placeholder="Password"
+                aria-label="Password"
                 className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -328,7 +324,7 @@ export default function LoginContent() {
               onClick={handleGoogleLogin}
               className="w-full border border-gray-200 py-3.5 rounded-xl text-sm font-bold text-gray-700 bg-white flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.98] hover:bg-gray-50 hover:border-gray-300"
             >
-              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="#4285F4"
                   d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.53-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.65-5.17 3.65-8.58Z"

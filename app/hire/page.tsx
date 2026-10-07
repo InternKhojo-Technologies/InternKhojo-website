@@ -97,7 +97,11 @@ interface TrackAvailability {
 
 export default function HireLandingHub() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  // NOTE: no `mounted` gate here on purpose — the topic grid, headings and
+  // preview content are static and must paint from SSR HTML immediately
+  // (FCP/LCP + crawler visibility). Per-user data arrives async below and
+  // only fills in the stats/calendar slots, so first render is identical
+  // on server and client (no hydration mismatch).
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
   const [stats, setStats] = useState<HireUserStats | null>(null);
@@ -179,16 +183,19 @@ export default function HireLandingHub() {
           if (!res.ok) throw new Error(json?.error || "Could not load. Please try again.");
           return json;
         });
-      const [statsJson, tracksJson] = await Promise.all([
-        fetchJson("/api/hire/stats?limit=200"),
-        fetchJson("/api/hire/tracks"),
-      ]);
-
-      const { data: profile } = await supabase
+      // Profile lookup is independent of stats/tracks — resolve all three
+      // together so first paint waits on the slowest call only.
+      const profileP = supabase
         .from("profiles")
         .select("role, name, avatar_url")
         .eq("id", userData.user.id)
         .maybeSingle();
+      const [statsJson, tracksJson, { data: profile }] = await Promise.all([
+        fetchJson("/api/hire/stats?limit=200"),
+        fetchJson("/api/hire/tracks"),
+        profileP,
+      ]);
+
       const p = profile as { role?: string; name?: string | null; avatar_url?: string | null } | null;
       setRole(p?.role ?? "candidate");
       setProfileName((p?.name ?? "").trim());
@@ -207,7 +214,6 @@ export default function HireLandingHub() {
   }, [router]);
 
   useEffect(() => {
-    setMounted(true);
     load();
   }, [load]);
 
@@ -238,8 +244,6 @@ export default function HireLandingHub() {
   }, [stats]);
 
   const activeDayCount = useMemo(() => Object.keys(activity).length, [activity]);
-
-  if (!mounted) return null;
 
   const isRecruiter = role === "recruiter";
   const displayName = profileName || "there";
@@ -664,6 +668,7 @@ export default function HireLandingHub() {
             <button
               onClick={() => setHowOpen((v) => !v)}
               aria-expanded={howOpen}
+              aria-controls="hire-how-it-works"
               className="flex w-full cursor-pointer items-center justify-between gap-3 p-5 text-left"
             >
               <span className="inline-flex items-center gap-2.5 text-sm font-bold">
@@ -680,6 +685,7 @@ export default function HireLandingHub() {
             <AnimatePresence initial={false}>
               {howOpen && (
                 <motion.div
+                  id="hire-how-it-works"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -720,6 +726,7 @@ export default function HireLandingHub() {
               <button
                 onClick={() => setPerfOpen((v) => !v)}
                 aria-expanded={perfOpen}
+                aria-controls="hire-performance"
                 className="inline-flex min-w-0 cursor-pointer items-center gap-2.5 text-sm font-bold text-left"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
@@ -746,6 +753,7 @@ export default function HireLandingHub() {
             <AnimatePresence initial={false}>
               {perfOpen && (
                 <motion.div
+                  id="hire-performance"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}

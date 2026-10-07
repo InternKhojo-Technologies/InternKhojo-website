@@ -239,6 +239,7 @@ export default function Navbar() {
   return (
     <>
       <nav
+        aria-label="Primary"
         className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${scrolled ? "backdrop-blur-md bg-white/70 shadow-sm" : "bg-white md:bg-white/40"}`}
       >
         <Container>
@@ -246,8 +247,10 @@ export default function Navbar() {
             <Link href="/" className="flex items-center gap-2 md:gap-3">
               <img
                 src="/logo-4.png"
+                width={48}
+                height={48}
                 className="w-8 h-8 md:w-12 md:h-12"
-                alt="IK logo"
+                alt="InternKhojo logo"
               />
               <div className="text-xl md:text-3xl font-black tracking-tight">
                 InternKhojo
@@ -282,6 +285,8 @@ export default function Navbar() {
                   </Link>
                   <button
                     onClick={() => setOpen(!open)}
+                    aria-expanded={open}
+                    aria-haspopup="menu"
                     className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors"
                   >
                     Sign up
@@ -289,7 +294,7 @@ export default function Navbar() {
 
                   {/* Dropdown Options List */}
                   {open && (
-                    <div className="absolute right-0 top-full mt-2 w-44 backdrop-blur-md bg-white/90 rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div role="menu" className="absolute right-0 top-full mt-2 w-44 backdrop-blur-md bg-white/90 rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                       <Link
                         href="/signup?role=candidate"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100/80 font-medium transition-colors"
@@ -312,6 +317,9 @@ export default function Navbar() {
                   {/* Notifications */}
                   <div className="relative">
                     <button
+                      aria-label="Notifications"
+                      aria-expanded={notifOpen}
+                      aria-haspopup="menu"
                       onClick={async (e) => {
                         e.stopPropagation();
                         const opening = !notifOpen;
@@ -437,16 +445,24 @@ export default function Navbar() {
                   {/* Profile Photo & Dropdown */}
                   <div className="relative">
                     {avatar ? (
-                      <img
-                        src={avatar}
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setProfileOpen(!profileOpen);
                           setNotifOpen(false);
                         }}
-                        className="w-9 h-9 rounded-full cursor-pointer object-cover border border-gray-100"
-                        alt="avatar"
-                      />
+                        aria-label="Open profile menu"
+                        aria-expanded={profileOpen}
+                        aria-haspopup="menu"
+                        className="w-9 h-9 rounded-full cursor-pointer overflow-hidden border border-gray-100 p-0 bg-transparent"
+                      >
+                        <img
+                          src={avatar}
+                          className="w-full h-full object-cover"
+                          alt="Your profile photo"
+                        />
+                      </button>
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse" />
                     )}
@@ -532,7 +548,10 @@ export default function Navbar() {
       </nav>
 
       {/* MOBILE BOTTOM BAR */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 px-2 pb-safe z-50">
+      <nav
+        aria-label="Mobile"
+        className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 px-2 pb-safe z-50"
+      >
         <div className="flex justify-around items-center h-16">
           {navLinks.map((link) => {
             const Icon = link.icon;
@@ -541,6 +560,7 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
+                aria-current={isActive ? "page" : undefined}
                 className={`flex flex-col items-center justify-center w-full gap-1 transition-all select-none touch-manipulation ${isActive ? "text-black" : "text-gray-400"}`}
               >
                 <Icon size={20} strokeWidth={isActive ? 3 : 2} />
@@ -553,7 +573,7 @@ export default function Navbar() {
             );
           })}
         </div>
-      </div>
+      </nav>
       <div className="h-16 md:hidden" />
     </>
   );

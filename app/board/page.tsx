@@ -198,7 +198,7 @@ export default async function BoardPage({
   });
 
   return (
-    <main className="relative isolate min-h-screen overflow-clip bg-white pb-20 text-slate-900">
+    <div className="relative isolate min-h-screen overflow-clip bg-white pb-20 text-slate-900">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
@@ -446,6 +446,6 @@ export default async function BoardPage({
           </p>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

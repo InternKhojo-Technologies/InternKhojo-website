@@ -133,3 +133,67 @@ export async function fetchVerifiedJobSitemapIds(
     return [];
   }
 }
+
+export interface PublicCompany {
+  id: string;
+  name?: string | null;
+  description?: string | null;
+  headquarters?: string | null;
+  industry?: string | null;
+  website?: string | null;
+  logo_url?: string | null;
+  verified?: boolean | null;
+}
+
+async function fetchCompanyByIdUncached(
+  id: string,
+): Promise<PublicCompany | null> {
+  if (!id) return null;
+  try {
+    const sb = serverSupabase();
+    if (!sb) return null;
+    const { data, error } = await sb
+      .from("companies")
+      .select("id, name, description, headquarters, industry, website, logo_url, verified")
+      .eq("id", id)
+      .single();
+    if (error || !data) return null;
+    return data as PublicCompany;
+  } catch {
+    return null;
+  }
+}
+
+// Dedupes the metadata + layout fetch within a single request. Build-safe:
+// without DB env vars (or on any failure) returns null and callers fall
+// back to generic metadata — never crashes the production build.
+export const getCompanyById = cache(fetchCompanyByIdUncached);
+
+/** Unique, natural per-company metadata from real company data (no invention). */
+export function companyMeta(company: PublicCompany): {
+  title: string;
+  description: string;
+  url: string;
+} {
+  const name = String(company.name ?? "Company").trim() || "Company";
+  const hq =
+    typeof company.headquarters === "string" && company.headquarters.trim() !== ""
+      ? company.headquarters.trim()
+      : null;
+  const industry =
+    typeof company.industry === "string" && company.industry.trim() !== ""
+      ? company.industry.trim()
+      : null;
+  const title = `${name} — Jobs & Company Profile`;
+  const parts = [
+    stripHtml(company.description, 140) ||
+      `${name}${industry ? ` (${industry})` : ""}${hq ? ` in ${hq}` : ""}.`,
+  ];
+  if (hq) parts.push(`Location: ${hq}.`);
+  parts.push("See open internships and jobs on InternKhojo.");
+  return {
+    title,
+    description: parts.join(" ").slice(0, 300),
+    url: `${SITE_URL}/companies/${company.id}`,
+  };
+}

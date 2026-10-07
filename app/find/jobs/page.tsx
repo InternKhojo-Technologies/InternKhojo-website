@@ -151,7 +151,8 @@ export default function JobsPage() {
                 value={titleQuery}
                 onChange={(e) => setTitleQuery(e.target.value)}
                 placeholder="Search position or key keywords..."
-                className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-300 text-sm"
+                aria-label="Search by job title or keyword"
+                className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-500 text-sm"
               />
             </div>
 
@@ -162,7 +163,8 @@ export default function JobsPage() {
                 value={locationQuery}
                 onChange={(e) => setLocationQuery(e.target.value)}
                 placeholder="Location / Remote"
-                className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-300 text-sm"
+                aria-label="Search by location"
+                className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-500 text-sm"
               />
             </div>
 
@@ -171,6 +173,8 @@ export default function JobsPage() {
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
+                aria-label="Toggle filters"
+                aria-expanded={showFilters}
                 className={`p-3.5 rounded-xl md:rounded-full transition-all flex items-center justify-center ${
                   showFilters
                     ? "bg-slate-100 text-red-600"
@@ -200,7 +204,8 @@ export default function JobsPage() {
                     value={companyQuery}
                     onChange={(e) => setCompanyQuery(e.target.value)}
                     placeholder="e.g. Google, Stripe"
-                    className="w-full bg-slate-50 border border-slate-200 pl-9 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-black font-bold text-slate-700 placeholder:text-slate-300"
+                    aria-label="Filter by company name"
+                    className="w-full bg-slate-50 border border-slate-200 pl-9 pr-4 py-2.5 rounded-xl text-xs outline-none focus:border-black font-bold text-slate-700 placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -216,6 +221,7 @@ export default function JobsPage() {
                       key={t}
                       type="button"
                       onClick={() => setPayType(t)}
+                      aria-pressed={payType === t}
                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
                         payType === t
                           ? "bg-red-600 border-red-600 text-white"
@@ -237,7 +243,8 @@ export default function JobsPage() {
                   value={selectedSkill}
                   onChange={(e) => setSelectedSkill(e.target.value)}
                   placeholder="e.g. Next.js, Figma, Tailwind"
-                  className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-xs outline-none focus:border-black font-bold text-slate-700 placeholder:text-slate-300"
+                  aria-label="Filter by skill"
+                  className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-xs outline-none focus:border-black font-bold text-slate-700 placeholder:text-slate-500"
                 />
               </div>
             </div>
@@ -300,6 +307,7 @@ export default function JobsPage() {
                       </div>
                       <button
                         type="button"
+                        aria-label={`Save ${job.title} to your list`}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();

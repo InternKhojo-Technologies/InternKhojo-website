@@ -23,6 +23,21 @@ export const metadata = {
   title: "Terms of Service",
   description:
     "The legal agreement governing your access to and use of InternKhojo, operated by Corvian Ventures LLP.",
+  alternates: {
+    canonical: "https://internkhojo.com/terms",
+  },
+  openGraph: {
+    title: "Terms of Service | InternKhojo",
+    description:
+      "The legal agreement governing your access to and use of InternKhojo, operated by Corvian Ventures LLP.",
+    url: "https://internkhojo.com/terms",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms of Service | InternKhojo",
+    description:
+      "The legal agreement governing your access to and use of InternKhojo, operated by Corvian Ventures LLP.",
+  },
 };
 
 const EFFECTIVE_DATE = "August 09, 2026";
@@ -65,7 +80,7 @@ export default function TermsOfServicePage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 selection:bg-red-100 selection:text-red-900 scroll-smooth font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-red-100 selection:text-red-900 scroll-smooth font-sans">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -826,6 +841,6 @@ export default function TermsOfServicePage() {
           </section>
         </TermsClient>
       </div>
-    </main>
+    </div>
   );
 }

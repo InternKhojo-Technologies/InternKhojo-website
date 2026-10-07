@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -204,9 +205,18 @@ export default function JobDetailClient({
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
-                        <span className="text-black font-bold">
-                          {job.companies?.name}
-                        </span>
+                        {job.company_id && job.companies?.name ? (
+                          <Link
+                            href={`/companies/${job.company_id}`}
+                            className="text-black font-bold hover:text-red-600 hover:underline underline-offset-2 transition-colors"
+                          >
+                            {job.companies?.name}
+                          </Link>
+                        ) : (
+                          <span className="text-black font-bold">
+                            {job.companies?.name}
+                          </span>
+                        )}
                         <span>•</span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5" />{" "}

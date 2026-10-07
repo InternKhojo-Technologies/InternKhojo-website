@@ -149,9 +149,9 @@ export default function Footer() {
           <div className="hidden md:grid md:grid-cols-4 gap-6 mb-12 pt-10 border-t border-white/[0.06]">
             {footerSections.map((section, i) => (
               <div key={i} className="group space-y-5">
-                <h4 className="text-[13px] font-bold uppercase tracking-[0.2em] text-gray-100 group-hover:text-red-500 transition-colors duration-300">
+                <h3 className="text-[13px] font-bold uppercase tracking-[0.2em] text-gray-100 group-hover:text-red-500 transition-colors duration-300">
                   {section.title}
-                </h4>
+                </h3>
                 <ul className="space-y-3">
                   {section.links.map((link, j) => (
                     <li key={j}>
@@ -178,6 +178,8 @@ export default function Footer() {
                 <div key={i} className="py-3.5">
                   <button
                     onClick={() => toggleSection(i)}
+                    aria-expanded={isOpen}
+                    aria-controls={`footer-section-${i}`}
                     className="w-full flex items-center justify-between py-1 text-left"
                   >
                     <span className="text-[13px] font-bold uppercase tracking-[0.15em] text-gray-200">
@@ -194,6 +196,7 @@ export default function Footer() {
                   <AnimatePresence initial={false}>
                     {isOpen && (
                       <motion.ul
+                        id={`footer-section-${i}`}
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
@@ -265,7 +268,7 @@ export default function Footer() {
               </div>
               <span className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-400 group-hover:text-white transition-colors duration-300">
                 PROUDLY MADE IN BHARAT{" "}
-                <span className="ml-1 opacity-70 group-hover:opacity-100 inline-block transition-transform group-hover:scale-110">
+                <span aria-hidden="true" className="ml-1 opacity-70 group-hover:opacity-100 inline-block transition-transform group-hover:scale-110">
                   🇮🇳
                 </span>
               </span>
