@@ -373,23 +373,31 @@ export async function fetchBulletinCounts(): Promise<BulletinCounts> {
   }
 }
 
-/** Distinct location values for the location datalist (capped). */
+/** Distinct location values for the location datalist (capped).
+ *  All key variants are queried in one parallel wave (not sequentially),
+ *  then merged in key-priority order — this was the slowest board query. */
 export async function fetchBulletinLocations(limit = 12): Promise<string[]> {
   if (!isMongoConfigured()) return [];
   try {
     const col = await getJobsCollection();
+    const perKey = await Promise.all(
+      LOC_KEYS.map((key) =>
+        col
+          .distinct(key, {
+            [key]: { $exists: true, $ne: "" },
+          } as Filter<Document>)
+          .catch((): unknown[] => []),
+      ),
+    );
     const out: string[] = [];
-    for (const key of LOC_KEYS) {
-      if (out.length >= limit) break;
-      const vals = await col.distinct(key, {
-        [key]: { $exists: true, $ne: "" },
-      } as Filter<Document>);
+    for (const vals of perKey) {
       for (const v of vals) {
         if (typeof v === "string" && v.trim() !== "" && !out.includes(v.trim())) {
           out.push(v.trim());
-          if (out.length >= limit) break;
+          if (out.length >= limit) return out;
         }
       }
+      if (out.length >= limit) break;
     }
     return out;
   } catch {
