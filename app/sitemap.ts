@@ -1,12 +1,15 @@
 import type { MetadataRoute } from "next";
-import { fetchBulletinSitemapIds } from "@/lib/external-jobs";
 import {
   fetchCompanySitemapIds,
   fetchVerifiedJobSitemapIds,
 } from "@/lib/server-jobs";
 import { SITE_URL } from "@/lib/site";
 
-// Static routes + bulletin postings + verified jobs + public companies.
+// Static routes + verified jobs + public companies.
+// Bulletin /board/[id] pages are intentionally excluded (noindex, follow).
+// /hire/* game routes (daily tests, DSA practice, leaderboard) are
+// authenticated interactive gameplay, not public SEO landing pages —
+// only /hire itself stays indexable.
 // Build-safe: without DB env vars, only static routes are emitted.
 export const revalidate = 3600;
 
@@ -23,24 +26,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/careers`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE_URL}/hire`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
-    { url: `${SITE_URL}/hire/leaderboard`, lastModified: now, changeFrequency: "daily", priority: 0.5 },
     { url: `${SITE_URL}/mentor`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
     { url: `${SITE_URL}/trust`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
   try {
-    const [bulletinIds, verifiedIds, companyIds] = await Promise.all([
-      fetchBulletinSitemapIds(2000),
+    const [verifiedIds, companyIds] = await Promise.all([
       // Open verified opportunities only — never closed/historical.
       fetchVerifiedJobSitemapIds(1000),
       fetchCompanySitemapIds(500),
     ]);
-    const postingRoutes: MetadataRoute.Sitemap = bulletinIds.map((id) => ({
-      url: `${SITE_URL}/board/${id}`,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    }));
     const verifiedRoutes: MetadataRoute.Sitemap = verifiedIds.map((id) => ({
       url: `${SITE_URL}/find/jobs/${id}`,
       changeFrequency: "weekly" as const,
@@ -51,7 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.5,
     }));
-    return [...staticRoutes, ...postingRoutes, ...verifiedRoutes, ...companyRoutes];
+    return [...staticRoutes, ...verifiedRoutes, ...companyRoutes];
   } catch {
     return staticRoutes;
   }
