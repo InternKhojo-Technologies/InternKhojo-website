@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { getCached, getCachedOr, setCached } from "@/lib/client-cache";
 import {
   Search,
   MapPin,
@@ -15,9 +16,18 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+const COMPANIES_CACHE_KEY = "ik:companies-list:v1";
+const COMPANIES_CACHE_TTL_MS = 90_000;
+
 export default function CompaniesLibrary() {
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Stale-while-revalidate: seed from cache for instant back-navigation,
+  // then refresh in the background below.
+  const [companies, setCompanies] = useState<any[]>(
+    () => getCachedOr(COMPANIES_CACHE_KEY, COMPANIES_CACHE_TTL_MS, []),
+  );
+  const [loading, setLoading] = useState<boolean>(
+    () => getCached(COMPANIES_CACHE_KEY, COMPANIES_CACHE_TTL_MS) === null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [activeIndustry, setActiveIndustry] = useState("All");
   const [sizeRange, setSizeRange] = useState(5000);
@@ -45,6 +55,7 @@ export default function CompaniesLibrary() {
         .limit(200);
       if (data) {
         setCompanies(data);
+        setCached(COMPANIES_CACHE_KEY, data);
       }
     } finally {
       setLoading(false);
@@ -95,6 +106,7 @@ export default function CompaniesLibrary() {
                 <input
                   type="text"
                   placeholder="SEARCH DATABASE..."
+                  aria-label="Search companies by name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-slate-100/50 border border-slate-200 py-2 pl-9 pr-4 rounded-lg text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-black/5 outline-none transition-all uppercase tracking-tight"
@@ -111,7 +123,7 @@ export default function CompaniesLibrary() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-6 pt-8 pb-20">
+      <div className="max-w-[1400px] mx-auto px-6 pt-8 pb-20">
         <div className="flex flex-col lg:flex-row gap-10">
           {/* --- MINIMALIST FILTER BAR --- */}
           <aside className="lg:w-[240px] flex-shrink-0 space-y-8 h-fit lg:sticky lg:top-24">
@@ -124,6 +136,7 @@ export default function CompaniesLibrary() {
                   <button
                     key={ind}
                     onClick={() => setActiveIndustry(ind)}
+                    aria-pressed={activeIndustry === ind}
                     className={`text-left px-3 py-2 rounded-md text-[11px] font-bold transition-all ${
                       activeIndustry === ind
                         ? "bg-black text-white"
@@ -149,6 +162,7 @@ export default function CompaniesLibrary() {
                 max="5000"
                 step="100"
                 value={sizeRange}
+                aria-label="Maximum company size filter"
                 onChange={(e) => setSizeRange(parseInt(e.target.value))}
                 className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#FF3B30]"
               />
@@ -198,10 +212,16 @@ export default function CompaniesLibrary() {
                           </div>
                           <div className="flex flex-col items-end gap-1">
                             {company.verified && (
-                              <ShieldCheck
-                                size={16}
-                                className="text-[#FF3B30]"
-                              />
+                              <span className="inline-flex items-center">
+                                <ShieldCheck
+                                  size={16}
+                                  className="text-[#FF3B30]"
+                                  aria-hidden="true"
+                                />
+                                <span className="sr-only">
+                                  Verified company
+                                </span>
+                              </span>
                             )}
                             <span className="text-[9px] font-black bg-slate-50 text-slate-400 px-2 py-0.5 rounded border border-slate-100 uppercase tracking-tighter">
                               {company.industry || "GENERAL"}
@@ -236,6 +256,7 @@ export default function CompaniesLibrary() {
 
                         <Link
                           href={`/companies/${company.id}`}
+                          aria-label={`View ${company.name} profile`}
                           className="text-slate-300 group-hover:text-[#FF3B30] transition-all"
                         >
                           <ChevronRight size={18} strokeWidth={3} />
@@ -248,7 +269,7 @@ export default function CompaniesLibrary() {
             )}
           </section>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

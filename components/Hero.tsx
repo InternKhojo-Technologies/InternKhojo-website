@@ -298,12 +298,16 @@ export default function Hero() {
           "
         >
           Discover. Apply. Grow.
+          <span className="sr-only">
+            {" "}
+            — internships and fresher jobs across India
+          </span>
         </h1>
       </div>
 
-      {/* tags */}
+      {/* tags (decorative floating pills — hidden from assistive tech) */}
 
-      <div ref={container} className="absolute inset-0">
+      <div ref={container} className="absolute inset-0" aria-hidden="true">
         {tags.map((t, i) => (
           <div
             key={i}

@@ -3,7 +3,7 @@
  *  as fast as every other page instead of hanging on the old screen. */
 export default function BoardLoading() {
   return (
-    <main className="relative isolate min-h-screen overflow-clip bg-white pb-20 text-slate-900">
+    <div className="relative isolate min-h-screen overflow-clip bg-white pb-20 text-slate-900">
       <p aria-live="polite" className="sr-only">
         Loading opportunities…
       </p>
@@ -66,6 +66,6 @@ export default function BoardLoading() {
           </aside>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
