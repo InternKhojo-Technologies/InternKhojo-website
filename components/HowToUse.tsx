@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import Container from "./ui/Container";
 import { Briefcase, Users, ArrowUpRight } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export default function HowToUse() {
-  const router = useRouter();
 
   const [mode, setMode] = useState("user");
   const [active, setActive] = useState(-1); // -1 means all cards are equal size by default
@@ -90,6 +89,7 @@ export default function HowToUse() {
                   setMode("user");
                   setActive(-1);
                 }}
+                aria-pressed={mode === "user"}
                 className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
                   mode === "user"
                     ? "bg-white text-black shadow-md"
@@ -104,6 +104,7 @@ export default function HowToUse() {
                   setMode("hire");
                   setActive(-1);
                 }}
+                aria-pressed={mode === "hire"}
                 className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
                   mode === "hire"
                     ? "bg-white text-black shadow-md"
@@ -162,22 +163,21 @@ export default function HowToUse() {
                   {content.desc}
                 </p>
 
-                <button
-                  onClick={() =>
-                    router.push(
-                      mode === "user"
-                        ? "/signup?role=candidate"
-                        : "/signup?role=recruiter",
-                    )
+                <Link
+                  href={
+                    mode === "user"
+                      ? "/signup?role=candidate"
+                      : "/signup?role=recruiter"
                   }
                   className={`mt-10 group flex items-center gap-2 font-bold text-sm uppercase tracking-widest transition-colors ${content.accent}`}
                 >
                   Get Started{" "}
                   <ArrowUpRight
                     size={18}
+                    aria-hidden="true"
                     className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
                   />
-                </button>
+                </Link>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -187,9 +187,19 @@ export default function HowToUse() {
             {steps.map((step, i) => (
               <motion.div
                 key={i}
+                role="button"
+                tabIndex={0}
+                aria-expanded={active === i}
+                aria-label={`${step.title}: ${step.desc}`}
                 onMouseEnter={() => setActive(i)}
                 onMouseLeave={() => setActive(-1)}
                 onClick={() => setActive(i)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setActive(i);
+                  }
+                }}
                 animate={{
                   flex: active === i ? 2.5 : 1,
                 }}
@@ -234,7 +244,7 @@ export default function HowToUse() {
                     alt={step.title}
                     fill
                     sizes="(max-width: 768px) 100vw, 25vw"
-                    priority={i === 1}
+                    priority={i === 0}
                     className="object-cover transition-transform duration-700"
                   />
 

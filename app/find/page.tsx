@@ -165,6 +165,7 @@ export default function FindPage() {
                 value={titleQuery}
                 onChange={(e) => setTitleQuery(e.target.value)}
                 placeholder="Job title..."
+                aria-label="Search by job title"
                 className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-400 text-sm"
               />
             </div>
@@ -176,6 +177,7 @@ export default function FindPage() {
                 value={locationQuery}
                 onChange={(e) => setLocationQuery(e.target.value)}
                 placeholder="Location"
+                aria-label="Search by location"
                 className="w-full bg-transparent outline-none font-bold text-slate-700 placeholder:text-slate-400 text-sm"
               />
             </div>
@@ -185,6 +187,8 @@ export default function FindPage() {
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
+                aria-label="Toggle filters"
+                aria-expanded={showFilters}
                 className={`p-3.5 rounded-xl md:rounded-full transition-all flex items-center justify-center ${
                   showFilters
                     ? "bg-slate-100 text-red-600"
@@ -213,6 +217,7 @@ export default function FindPage() {
                       key={t}
                       type="button"
                       onClick={() => setPayType(t)}
+                      aria-pressed={payType === t}
                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
                         payType === t
                           ? "bg-red-600 border-red-600 text-white"
@@ -232,6 +237,7 @@ export default function FindPage() {
                   value={selectedSkill}
                   onChange={(e) => setSelectedSkill(e.target.value)}
                   placeholder="e.g. React, Figma"
+                  aria-label="Filter by skill"
                   className="w-full bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-xl text-xs outline-none focus:border-red-200 font-bold text-slate-700"
                 />
               </div>

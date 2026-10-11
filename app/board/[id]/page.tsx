@@ -54,7 +54,7 @@ export async function generateMetadata({
   if (!job) {
     return {
       title: "Post not found — Opportunities Bulletin",
-      robots: { index: false, follow: false },
+      robots: { index: false, follow: true },
     };
   }
   const type = String(job.job_type ?? "")
@@ -68,7 +68,7 @@ export async function generateMetadata({
     title: `${job.title} (${type === "internship" ? "Internship" : "Job"}) — Bulletin`,
     description: `${summary} Location: ${job.location || "Remote"}. Pay: ${payLabel(job)}.`,
     alternates: { canonical: `${SITE_URL}/board/${job.id}` },
-    robots: { index: true, follow: true },
+    robots: { index: false, follow: true },
     openGraph: {
       type: "article",
       url: `${SITE_URL}/board/${job.id}`,
@@ -210,7 +210,7 @@ export default async function BoardDetailPage({
   ];
 
   return (
-    <main className="relative isolate min-h-screen overflow-clip bg-[#fcfcfc] pb-24 text-slate-900">
+    <div className="relative isolate min-h-screen overflow-clip bg-[#fcfcfc] pb-24 text-slate-900">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jobJsonLd) }}
@@ -630,6 +630,6 @@ export default async function BoardDetailPage({
           </section>
         )}
       </div>
-    </main>
+    </div>
   );
 }

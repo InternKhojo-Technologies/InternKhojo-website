@@ -95,7 +95,7 @@ export default function CompanyPage() {
         </div>
       </div>
 
-      <main className="max-w-[1100px] mx-auto px-6 py-8">
+      <div className="max-w-[1100px] mx-auto px-6 py-8">
         <div className="lg:grid lg:grid-cols-12 gap-6 items-start">
           {/* --- LEFT: ENTITY CORE --- */}
           <div className="lg:col-span-8 space-y-6">
@@ -241,7 +241,7 @@ export default function CompanyPage() {
             )}
           </aside>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

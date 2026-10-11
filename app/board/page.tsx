@@ -78,6 +78,17 @@ export async function generateMetadata({
   const title = `Open ${typePrefix} Bulletin${pageSuffix} — 1500+ Live Postings`;
   const description = `Browse 1500+ open ${typePrefix.toLowerCase()} collected from across the internet — filter by type, pay, location and skill. Every post shows pay, location, tenure, deadline and direct apply links.${pageSuffix}`;
   const url = canonicalFor(query);
+  // Only the main bulletin and the two curated type lanes are indexable.
+  // Free-text search (q/loc/skill/field), pay filters and deep pages stay
+  // crawlable for users but carry noindex so they never compete in search.
+  // The bare /board URL and ?type=job / ?type=internship remain indexed.
+  const indexable =
+    !query.q &&
+    !query.loc &&
+    !query.skill &&
+    !query.field &&
+    (query.pay ?? "all") === "all" &&
+    (query.page ?? 1) <= 1;
   return {
     title,
     description,
@@ -93,7 +104,7 @@ export async function generateMetadata({
       "off campus jobs",
     ],
     alternates: { canonical: url },
-    robots: { index: true, follow: true },
+    robots: { index: indexable, follow: true },
     openGraph: {
       type: "website",
       url,
@@ -187,7 +198,7 @@ export default async function BoardPage({
   });
 
   return (
-    <main className="relative isolate min-h-screen overflow-clip bg-white pb-20 text-slate-900">
+    <div className="relative isolate min-h-screen overflow-clip bg-white pb-20 text-slate-900">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
@@ -435,6 +446,6 @@ export default async function BoardPage({
           </p>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

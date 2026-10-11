@@ -111,7 +111,7 @@ export default function SignupContent() {
           <img
             src="/logo-4.png"
             className="w-8 h-8 object-contain"
-            alt="Logo"
+            alt="InternKhojo logo"
           />
           <span className="font-black text-xl tracking-tighter text-black">
             InternKhojo.
@@ -121,10 +121,10 @@ export default function SignupContent() {
         <div className="relative z-10 my-auto max-w-lg w-full">
           {role === "candidate" ? (
             <div className="space-y-8 transition-opacity duration-200 opacity-100">
-              <h2 className="text-5xl font-[950] tracking-tight leading-[1.05] text-black uppercase">
+              <p className="text-5xl font-[950] tracking-tight leading-[1.05] text-black uppercase">
                 Build Your Identity <br />
                 on <span className="text-blue-600 italic">Proof of Work.</span>
-              </h2>
+              </p>
 
               <p className="text-gray-500 font-medium text-lg leading-relaxed">
                 Bypass legacy resumes and mechanical filters. InternKhojo
@@ -150,10 +150,10 @@ export default function SignupContent() {
             </div>
           ) : (
             <div className="space-y-8 transition-opacity duration-200 opacity-100">
-              <h2 className="text-5xl font-[950] tracking-tight leading-[1.05] text-black uppercase">
+              <p className="text-5xl font-[950] tracking-tight leading-[1.05] text-black uppercase">
                 Deploy Elite <br />
                 Talent <span className="text-red-600">Pipelines.</span>
-              </h2>
+              </p>
 
               <p className="text-gray-500 font-medium text-lg leading-relaxed">
                 Stop parsing generic CVs. Source early-career developers,
@@ -192,7 +192,7 @@ export default function SignupContent() {
           <img
             src="/logo-4.png"
             className="w-7 h-7 object-contain"
-            alt="Logo"
+            alt="InternKhojo logo"
           />
           <span className="font-black text-xl tracking-tighter text-black">
             InternKhojo.
@@ -218,6 +218,7 @@ export default function SignupContent() {
                   scroll: false,
                 });
               }}
+              aria-pressed={role === "candidate"}
               className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-colors duration-300 relative z-10 ${
                 role === "candidate"
                   ? "text-white"
@@ -246,6 +247,7 @@ export default function SignupContent() {
                   scroll: false,
                 });
               }}
+              aria-pressed={role === "recruiter"}
               className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-colors duration-300 relative z-10 ${
                 role === "recruiter"
                   ? "text-white"
@@ -278,6 +280,7 @@ export default function SignupContent() {
               <input
                 type="email"
                 placeholder="Email address"
+                aria-label="Email address"
                 className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -293,6 +296,7 @@ export default function SignupContent() {
               <input
                 type="password"
                 placeholder="Password"
+                aria-label="Password"
                 className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -305,6 +309,16 @@ export default function SignupContent() {
             <div
               className="flex items-center mt-0.5 cursor-pointer"
               onClick={() => setAcceptedTerms(!acceptedTerms)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setAcceptedTerms(!acceptedTerms);
+                }
+              }}
+              role="checkbox"
+              aria-checked={acceptedTerms}
+              tabIndex={0}
+              aria-label="Accept Terms of Service and Privacy Policy"
             >
               <div
                 className={`w-4 h-4 border-2 rounded flex items-center justify-center transition-all ${
@@ -372,7 +386,7 @@ export default function SignupContent() {
               }`}
             >
               {/* Google Logo */}
-              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="#4285F4"
                   d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.53-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.65-5.17 3.65-8.58Z"
@@ -396,12 +410,12 @@ export default function SignupContent() {
 
           <p className="mt-8 text-center text-sm text-gray-400 font-medium">
             Already have an account?{" "}
-            <span
+            <Link
+              href={`/login?role=${role}`}
               className="text-black font-black hover:underline cursor-pointer ml-1"
-              onClick={() => router.push(`/login?role=${role}`)}
             >
               Sign In
-            </span>
+            </Link>
           </p>
         </div>
       </div>

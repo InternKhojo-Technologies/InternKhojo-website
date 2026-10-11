@@ -1,0 +1,58 @@
+# InternKhojo
+
+> InternKhojo (https://internkhojo.com) connects students with vetted internships, fresher jobs, and startups hiring across India. Free for students. The platform offers verified job discovery, a company directory, an external opportunities bulletin, gamified placement practice (Hire), and a mentor network (currently waitlist-only). Operated by Corvian Ventures LLP.
+
+## Who it is for
+
+- **Candidates (students / early-career job seekers):** browse and apply to internships and fresher jobs, explore companies, follow the external opportunities bulletin, and practice with daily placement tests.
+- **Recruiters / companies:** post verified openings, manage applications, and maintain a company profile (via authenticated dashboards; not public resources and not listed here).
+- **Mentors / mentees:** the mentor network is not yet live; interested users can join a waitlist (see Mentor section).
+
+## Primary public pages
+
+- [Homepage](https://internkhojo.com/): overview of InternKhojo — internships, jobs, and startups hiring across India.
+- [Find](https://internkhojo.com/find): startup-and-jobs discovery hub linking to open roles and companies.
+- [Jobs listing](https://internkhojo.com/find/jobs): browsable list of open verified opportunities ("Available Opportunities") with title, company, location, pay, and skill filters.
+- [Companies directory](https://internkhojo.com/companies): searchable directory of companies hiring via the platform.
+- [Opportunities bulletin](https://internkhojo.com/board): separate discovery board of externally sourced, open-web job and internship postings (not vetted platform opportunities) with type, pay, location, and skill filters — aimed at helping visitors discover the InternKhojo ecosystem. Filtered canonical variants: [Jobs bulletin](https://internkhojo.com/board?type=job) and [Internships bulletin](https://internkhojo.com/board?type=internship).
+- [Hire — practice tests](https://internkhojo.com/hire): public overview and entry point for gamified placement practice (daily one-try-per-topic tests, streaks, performance tracking, leaderboard). Guests see a public preview of the hub; actual gameplay requires login.
+- [Mentor](https://internkhojo.com/mentor): mentor-network waitlist page ("Join Mentor Network Waitlist"). Not a live mentor marketplace.
+- [About](https://internkhojo.com/about): what InternKhojo is and who it serves.
+- [Careers](https://internkhojo.com/careers): InternKhojo's own open positions; applications link to verified job pages.
+- [Trust & Safety](https://internkhojo.com/trust): platform safety standards and reporting guidelines.
+- [Terms of Service](https://internkhojo.com/terms): legal agreement governing use of InternKhojo.
+- [Privacy & Platform Policy](https://internkhojo.com/privacy): how InternKhojo collects, uses, and protects data for candidates and companies.
+- [Sitemap](https://internkhojo.com/sitemap.xml): machine-readable list of indexable URLs (static pages plus open verified jobs and public companies).
+
+## Job discovery URL patterns
+
+- Job listing: `https://internkhojo.com/find/jobs`
+- Individual verified job: `https://internkhojo.com/find/jobs/[id]` — full role detail with canonical URL, indexed only while the role is open, and carrying JobPosting structured data (title, description, date posted, deadline, employment type, hiring organization, location, pay where applicable, skills).
+- Company directory: `https://internkhojo.com/companies`
+- Individual company profile: `https://internkhojo.com/companies/[id]` — company overview plus its open roles.
+- Do not enumerate individual job or company IDs here; discover them via the listing pages and sitemap.
+
+## Bulletin board vs verified jobs
+
+- `/find` and `/find/jobs` hold the platform's vetted, verified opportunities; individual verified jobs live at `/find/jobs/[id]`.
+- `/board` is a separate acquisition/discovery feature of externally sourced, open-web postings and is explicitly not platform-verified; each post carries a disclaimer pointing to verified roles under `/find`.
+- Individual bulletin posts (`/board/[id]`) use `noindex, follow` and are excluded from the sitemap. Reference `/board` only; do not treat individual bulletin posts as canonical indexed job pages.
+
+## Hire practice system (public overview vs authenticated gameplay)
+
+- `/hire` is the public overview/entry point: topics, how daily tests work, streaks, and leaderboard links.
+- Daily tests (`/hire/[type]/daily`), custom DSA practice (`/hire/dsa/practice`), and the leaderboard (`/hire/leaderboard`) are authenticated interactive gameplay: questions, answers, and rankings require login. Do not present them as publicly crawlable content, and never reproduce questions or answers from them.
+
+## Operator and contact
+
+- Operator: Corvian Ventures LLP (New Delhi, India).
+- Contact: legal@internkhojo.com.
+- Official socials: [LinkedIn](https://linkedin.com/company/internkhojo) and [Instagram](https://www.instagram.com/internkhojo/).
+
+## Not public resources (do not cite as sources)
+
+- Authentication and accounts: `/login`, `/signup`.
+- Dashboards and private areas: `/dashboard/*`, `/profile`, personal history, rewards/coins.
+- Authenticated gameplay and its data: `/hire/[type]/daily`, `/hire/dsa/practice`, `/hire/leaderboard`, `/hire/history`.
+- Individual bulletin posts: `/board/[id]` (intentionally `noindex`).
+- APIs and internal routes: `/api/*` and anything not linked from the public pages above.

@@ -21,6 +21,21 @@ export const metadata = {
   title: "Trust & Safety Policy",
   description:
     "Learn about InternKhojo's safety standards, candidate protection rules, company expectations, and platform reporting guidelines.",
+  alternates: {
+    canonical: "https://internkhojo.com/trust",
+  },
+  openGraph: {
+    title: "Trust & Safety Policy | InternKhojo",
+    description:
+      "Learn about InternKhojo's safety standards, candidate protection rules, company expectations, and platform reporting guidelines.",
+    url: "https://internkhojo.com/trust",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Trust & Safety Policy | InternKhojo",
+    description:
+      "Learn about InternKhojo's safety standards, candidate protection rules, company expectations, and platform reporting guidelines.",
+  },
 };
 
 const EFFECTIVE_DATE = "August 09, 2026";
@@ -63,7 +78,7 @@ export default function TrustAndSafetyPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 selection:bg-red-100 selection:text-red-900 scroll-smooth font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-red-100 selection:text-red-900 scroll-smooth font-sans">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -597,6 +612,6 @@ export default function TrustAndSafetyPage() {
           </section>
         </TrustClient>
       </div>
-    </main>
+    </div>
   );
 }

@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Users,
   Sparkles,
-  Activity,
   MessageSquare,
   Briefcase,
   Video,
@@ -21,8 +20,10 @@ import {
 
 export default function MentorStagingPage() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // NOTE: no `mounted`/full-page loading gate here on purpose — the hero,
+  // waitlist modal and preview content are static and must paint from SSR
+  // HTML immediately. evaluateUser() below only prefills the email field
+  // and waitlist status as progressive enhancement.
   const [sessionUser, setSessionUser] = useState<any>(null);
 
   // Waitlist Modal States (Forced Open)
@@ -46,7 +47,6 @@ export default function MentorStagingPage() {
   });
 
   useEffect(() => {
-    setMounted(true);
     evaluateUser();
   }, []);
 
@@ -69,8 +69,6 @@ export default function MentorStagingPage() {
       if (localWaitlist) setAlreadyApplied(true);
     } catch (err) {
       console.error("User sync error:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -150,20 +148,6 @@ export default function MentorStagingPage() {
     },
   ];
 
-  if (!mounted) return null;
-
-  if (loading)
-    return (
-      <div className="h-screen w-full bg-[#FAFAFA] flex items-center justify-center px-4">
-        <div className="flex items-center gap-3">
-          <Activity size={16} className="animate-spin text-neutral-400" />
-          <span className="text-xs font-semibold text-neutral-500 tracking-tight">
-            Syncing connection...
-          </span>
-        </div>
-      </div>
-    );
-
   return (
     <div className="bg-[#FAFAFA] min-h-screen text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white pb-32 antialiased relative overflow-hidden">
       {/* GRID BACKGROUND */}
@@ -176,6 +160,7 @@ export default function MentorStagingPage() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            role="status"
             className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border ${
               toast.type === "error"
                 ? "bg-red-950 text-red-200 border-red-800"
@@ -200,10 +185,14 @@ export default function MentorStagingPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }}
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mentor-waitlist-title"
               className="bg-white rounded-[2.5rem] border border-neutral-200/80 p-8 sm:p-10 max-w-md w-full shadow-[0_32px_80px_rgba(0,0,0,0.35)] relative space-y-6 cursor-default"
             >
               <button
                 onClick={handleExitToHome}
+                aria-label="Close and return to home"
                 className="absolute top-6 right-6 text-neutral-400 hover:text-black transition-colors p-2 rounded-full hover:bg-neutral-100 cursor-pointer"
                 title="Return to Home"
               >
@@ -219,7 +208,7 @@ export default function MentorStagingPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Building Phase Active
                 </div>
-                <h3 className="text-2xl font-black text-neutral-950 tracking-tight">
+                <h3 id="mentor-waitlist-title" className="text-2xl font-black text-neutral-950 tracking-tight">
                   Join Mentor Network Waitlist
                 </h3>
                 <p className="text-xs text-neutral-500 font-medium leading-relaxed">
@@ -246,10 +235,11 @@ export default function MentorStagingPage() {
               ) : (
                 <form onSubmit={handleNotifySubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                    <label htmlFor="mentor-email" className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
                       Your Email Address
                     </label>
                     <input
+                      id="mentor-email"
                       type="email"
                       required
                       placeholder="Enter your email address..."
@@ -260,10 +250,11 @@ export default function MentorStagingPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                    <label htmlFor="mentor-interest" className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
                       Select Your Interest
                     </label>
                     <select
+                      id="mentor-interest"
                       value={selectedRole}
                       onChange={(e: any) => setSelectedRole(e.target.value)}
                       className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3.5 text-xs font-bold outline-none focus:border-black cursor-pointer"

@@ -1,12 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import Container from "./ui/Container";
 import { MoveRight } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export default function CTA() {
-  const router = useRouter();
 
   return (
     <section className="bg-white py-24 lg:py-32 relative overflow-hidden border-t border-gray-100">
@@ -75,23 +74,24 @@ export default function CTA() {
               transition={{ delay: 0.2 }}
               className="flex flex-col sm:flex-row items-center gap-4"
             >
-              <button
-                onClick={() => router.push("/find")}
+              <Link
+                href="/find"
                 className="group flex items-center gap-4 px-10 py-5 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:bg-red-600 active:scale-95 shadow-xl shadow-black/10"
               >
                 Find Work
                 <MoveRight
                   size={18}
+                  aria-hidden="true"
                   className="group-hover:translate-x-2 transition-transform"
                 />
-              </button>
+              </Link>
 
-              <button
-                onClick={() => router.push("/hire")}
+              <Link
+                href="/hire"
                 className="px-10 py-5 bg-white border border-gray-200 text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 shadow-sm"
               >
                 Hire Talent
-              </button>
+              </Link>
             </motion.div>
           </div>
         </div>

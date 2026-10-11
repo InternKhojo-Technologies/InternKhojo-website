@@ -22,6 +22,21 @@ export const metadata = {
   title: "Privacy & Platform Policy",
   description:
     "Learn how InternKhojo collects, uses, protects, and manages data for Candidates and Companies.",
+  alternates: {
+    canonical: "https://internkhojo.com/privacy",
+  },
+  openGraph: {
+    title: "Privacy & Platform Policy | InternKhojo",
+    description:
+      "Learn how InternKhojo collects, uses, protects, and manages data for Candidates and Companies.",
+    url: "https://internkhojo.com/privacy",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy & Platform Policy | InternKhojo",
+    description:
+      "Learn how InternKhojo collects, uses, protects, and manages data for Candidates and Companies.",
+  },
 };
 
 const EFFECTIVE_DATE = "August 09, 2026";
@@ -64,7 +79,7 @@ export default function PrivacyPolicyPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 selection:bg-red-100 selection:text-red-900 scroll-smooth font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-red-100 selection:text-red-900 scroll-smooth font-sans">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -629,6 +644,6 @@ export default function PrivacyPolicyPage() {
           </section>
         </PrivacyClient>
       </div>
-    </main>
+    </div>
   );
 }

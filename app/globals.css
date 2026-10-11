@@ -14,6 +14,14 @@ body {
 
 /* helpers */
 
+/* Arena display face (Inter, injected via --font-hire-display by
+   app/hire/layout.tsx). Falls back to system sans outside /hire. */
+.font-display-hire {
+  font-family: var(--font-hire-display), "Inter", "Geist Sans", ui-sans-serif,
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
+}
+
 .bg-primary {
   background: var(--primary);
 }
@@ -91,4 +99,226 @@ body {
   .animate-marquee-x {
     animation: none;
   }
+}
+
+/* ── DSA bank HTML (hire DSA track + DSA practice) ─────────────────
+   The dsa_questions bank ships scraped HTML (code blocks, diagram images)
+   plus plain-text C/C++ snippets. lib/dsa-format.ts normalises the text;
+   these rules guarantee the result can never overflow its card and that
+   code + math are visually distinct from the black question prose. */
+.dsa-html {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.dsa-html > *:first-child {
+  margin-top: 0;
+}
+
+.dsa-html > *:last-child {
+  margin-bottom: 0;
+}
+
+.dsa-html img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin: 0.75rem auto;
+  display: block;
+}
+
+.dsa-html pre {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin: 0.75rem 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+  tab-size: 4;
+  white-space: pre;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Plain-text snippet questions (C/C++): accent bar marks generated code. */
+.dsa-html pre.dsa-code {
+  border-left: 4px solid #10b981;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.15);
+}
+
+.dsa-html pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  white-space: pre;
+}
+
+.dsa-html code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 0.88em;
+  overflow-wrap: anywhere;
+}
+
+.dsa-html p code,
+.dsa-html li code,
+.dsa-html td code {
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #e0e7ff;
+  border-radius: 6px;
+  padding: 0.1em 0.4em;
+  white-space: nowrap;
+}
+
+/* Converted [tex] math: serif + indigo so Θ(n log n) reads as math. */
+.dsa-html .dsa-tex {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 600;
+  color: #4338ca;
+  background: #eef2ff;
+  border-radius: 6px;
+  padding: 0.05em 0.35em;
+  white-space: nowrap;
+}
+
+/* Pygments token colors inside scraped <pre> code (one-dark palette on the
+   dark block background). Without these the highlight spans are unstyled. */
+.dsa-html pre .k,
+.dsa-html pre .kt,
+.dsa-html pre .kd,
+.dsa-html pre .kn {
+  color: #c678dd;
+}
+.dsa-html pre .nf,
+.dsa-html pre .fm,
+.dsa-html pre .cp,
+.dsa-html pre .cpf {
+  color: #61afef;
+}
+.dsa-html pre .s,
+.dsa-html pre .sc,
+.dsa-html pre .sd,
+.dsa-html pre .s1,
+.dsa-html pre .s2 {
+  color: #98c379;
+}
+.dsa-html pre .mi,
+.dsa-html pre .m,
+.dsa-html pre .mf,
+.dsa-html pre .mh {
+  color: #d19a66;
+}
+.dsa-html pre .c,
+.dsa-html pre .cm,
+.dsa-html pre .c1 {
+  color: #7f8aa3;
+  font-style: italic;
+}
+.dsa-html pre .o,
+.dsa-html pre .p {
+  color: #9aa7c2;
+}
+.dsa-html pre .n,
+.dsa-html pre .nn,
+.dsa-html pre .nb,
+.dsa-html pre .na {
+  color: #e2e8f0;
+}
+
+/* Multi-language code switcher (parsed <gfg-tabs>). The <pre> reuses the
+   dark code theme above; only the dropdown chrome is styled here. */
+.dsa-codetabs {
+  max-width: 100%;
+}
+
+.dsa-codetabs select option {
+  background: #0f172a;
+  color: #fff;
+}
+
+/* Graceful placeholder swapped in when a bank diagram cannot load
+   (dead host and no archived copy). Keeps card layout intact. */
+.dsa-img-fallback {
+  margin: 0.75rem auto;
+  max-width: 100%;
+  border: 1.5px dashed #d6d3d1;
+  background: #fafaf9;
+  color: #a8a29e;
+  border-radius: 12px;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  font-size: 12.5px;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.dsa-html p {
+  margin: 0.45rem 0;
+  line-height: 1.75;
+}
+
+.dsa-html ul,
+.dsa-html ol {
+  margin: 0.5rem 0;
+  padding-left: 1.35rem;
+}
+
+.dsa-html ul {
+  list-style: disc;
+}
+
+.dsa-html ol {
+  list-style: decimal;
+}
+
+.dsa-html li + li {
+  margin-top: 0.25rem;
+}
+
+.dsa-html table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 13.5px;
+}
+
+.dsa-html th,
+.dsa-html td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.dsa-html th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.dsa-html a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+.dsa-html .dsa-option-body p {
+  margin: 0;
 }

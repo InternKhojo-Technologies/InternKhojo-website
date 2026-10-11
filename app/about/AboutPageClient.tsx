@@ -158,8 +158,9 @@ export default function AboutPage() {
         </motion.div>
 
         <div className="max-w-[1500px] mx-auto w-full relative z-10">
-          <Reveal>
-            <div className="flex items-center gap-3 md:gap-5 mb-8 md:mb-16">
+          {/* Hero content renders visibly on first paint (no entrance
+              fade) so LCP is not gated on JS animation. */}
+          <div className="flex items-center gap-3 md:gap-5 mb-8 md:mb-16">
               <span className="h-[2px] w-12 md:w-16 bg-red-600" />
               <span className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em] text-red-600">
                 The Recruitment Standard
@@ -204,7 +205,6 @@ export default function AboutPage() {
                 </div>
               </div>
             </div>
-          </Reveal>
         </div>
       </section>
 
@@ -518,26 +518,27 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ABOUT PAGE SPECIFIC LOCAL FOOTER */}
-      <footer className="py-16 md:py-24 px-6 sm:px-12 lg:px-20 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-8 sm:gap-16">
+      {/* ABOUT PAGE SPECIFIC LOCAL FOOTER (div, not footer: the global
+          layout already renders the page's single contentinfo landmark) */}
+      <div className="py-16 md:py-24 px-6 sm:px-12 lg:px-20 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-8 sm:gap-16">
         <div className="text-3xl md:text-4xl font-black tracking-tighter italic">
           IK<span className="text-red-600">.</span>
         </div>
         <div className="flex flex-wrap justify-center gap-8 sm:gap-16 text-[11px] md:text-[12px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-gray-300">
-          <a href="#" target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition-colors">
+          <a href="https://x.com/internkhojo" target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition-colors">
             X
           </a>
           <a href="https://www.linkedin.com/company/internkhojo/" target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition-colors">
             LinkedIn
           </a>
-          <a href="#" target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition-colors">
+          <a href="https://www.instagram.com/internkhojo/" target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition-colors">
             Instagram
           </a>
         </div>
         <div className="text-[9px] md:text-[10px] font-mono text-gray-200 uppercase tracking-widest select-none">
           Architect_Rel_2026_Master
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

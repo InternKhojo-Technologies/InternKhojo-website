@@ -120,6 +120,12 @@ export default function RootLayout({
     <html lang="en">
       {/* ✅ APPLY GEIST EVERYWHERE */}
       <body className={`${GeistSans.className} bg-white`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:rounded-lg focus:bg-black focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
+        >
+          Skip to content
+        </a>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(GLOBAL_JSON_LD) }}
@@ -151,7 +157,7 @@ export default function RootLayout({
           }}
         />
 
-        <main className="pt-24">{children}</main>
+        <main id="main-content" className="pt-24">{children}</main>
 
         <Footer />
         <Analytics />

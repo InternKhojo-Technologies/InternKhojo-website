@@ -25,6 +25,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 const COMPANY_ID = "e62becf7-d450-4f1f-80d2-10b88a336afc";
 
@@ -60,7 +61,8 @@ export default function CompanyCareersPage() {
         .from("jobs")
         .select(`*, companies(name, logo_url)`)
         .eq("company_id", COMPANY_ID)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       setJobs(companyJobs || []);
       setLoading(false);
@@ -138,36 +140,44 @@ export default function CompanyCareersPage() {
                 experiences.&rdquo;
               </p>
             </div>
-            <div className="h-48 rounded-3xl overflow-hidden shadow-md group">
-              <img
+            <div className="h-48 rounded-3xl overflow-hidden shadow-md group relative">
+              <Image
                 src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80"
                 alt="Team working"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                fill
+                sizes="(max-width: 768px) 100vw, 25vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
             </div>
           </div>
 
-          <div className="h-80 rounded-3xl overflow-hidden shadow-md group">
-            <img
+          <div className="h-80 rounded-3xl overflow-hidden shadow-md group relative">
+            <Image
               src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80"
               alt="Office culture"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              fill
+              sizes="(max-width: 768px) 100vw, 25vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </div>
 
-          <div className="h-72 rounded-3xl overflow-hidden shadow-md bg-amber-400 p-2 group">
-            <img
+          <div className="h-72 rounded-3xl overflow-hidden shadow-md bg-amber-400 p-2 group relative">
+            <Image
               src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80"
               alt="Collaboration"
-              className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
+              fill
+              sizes="(max-width: 768px) 100vw, 25vw"
+              className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
             />
           </div>
 
-          <div className="h-52 rounded-3xl overflow-hidden shadow-md group">
-            <img
+          <div className="h-52 rounded-3xl overflow-hidden shadow-md group relative">
+            <Image
               src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=600&q=80"
               alt="Workspace"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              fill
+              sizes="(max-width: 768px) 100vw, 25vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </div>
         </div>
@@ -204,11 +214,13 @@ export default function CompanyCareersPage() {
                   opportunities and continuous skill advancement.
                 </p>
               </div>
-              <div className="h-36 rounded-2xl overflow-hidden border border-slate-200/60 shadow-inner">
-                <img
+              <div className="h-36 rounded-2xl overflow-hidden border border-slate-200/60 shadow-inner relative">
+                <Image
                   src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=500&q=80"
                   alt="Growth"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover"
                 />
               </div>
             </div>
@@ -253,11 +265,13 @@ export default function CompanyCareersPage() {
                   and tailored perks built for long-term retention.
                 </p>
               </div>
-              <div className="h-44 rounded-2xl overflow-hidden border border-slate-200/60 shadow-inner">
-                <img
+              <div className="h-44 rounded-2xl overflow-hidden border border-slate-200/60 shadow-inner relative">
+                <Image
                   src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=500&q=80"
                   alt="Team Benefits"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover"
                 />
               </div>
             </div>
@@ -269,11 +283,13 @@ export default function CompanyCareersPage() {
       <section className="py-24 max-w-6xl mx-auto px-6">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="relative">
-            <div className="rounded-3xl overflow-hidden shadow-xl border border-slate-200/80 h-[400px]">
-              <img
+            <div className="rounded-3xl overflow-hidden shadow-xl border border-slate-200/80 h-[400px] relative">
+              <Image
                 src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80"
                 alt="Our Team"
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
               />
             </div>
             <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-md border border-slate-200/80 p-4 rounded-2xl shadow-xl flex items-center gap-3.5">
@@ -390,6 +406,7 @@ export default function CompanyCareersPage() {
               <button
                 type="button"
                 onClick={() => setJobType("internship")}
+                aria-pressed={jobType === "internship"}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                   jobType === "internship"
                     ? "bg-blue-600 text-white shadow-xs"
@@ -401,6 +418,7 @@ export default function CompanyCareersPage() {
               <button
                 type="button"
                 onClick={() => setJobType("full-time")}
+                aria-pressed={jobType === "full-time"}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                   jobType === "full-time"
                     ? "bg-blue-600 text-white shadow-xs"
@@ -418,6 +436,7 @@ export default function CompanyCareersPage() {
                   key={cat}
                   type="button"
                   onClick={() => setCategory(cat)}
+                  aria-pressed={category === cat}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     category === cat
                       ? "bg-red-500 text-white shadow-xs"
@@ -440,6 +459,7 @@ export default function CompanyCareersPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search openings..."
+                aria-label="Search open positions"
                 className="w-full bg-white border border-slate-200/90 pl-9 pr-4 py-2 rounded-full text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-600 transition-all shadow-xs"
               />
             </div>
@@ -493,6 +513,8 @@ export default function CompanyCareersPage() {
                         <button
                           type="button"
                           onClick={() => !isClosed && toggleExpand(job.id)}
+                          aria-expanded={isExpanded}
+                          aria-label={`${isExpanded ? "Hide" : "Show"} details for ${job.title}`}
                           className="w-9 h-9 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center border border-slate-200 text-slate-600 transition-colors"
                         >
                           {isExpanded ? (
