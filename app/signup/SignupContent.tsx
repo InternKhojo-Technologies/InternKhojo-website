@@ -25,6 +25,16 @@ export default function SignupContent() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
+
+  const requireTermsAccepted = () => {
+    if (!acceptedTerms) {
+      setTermsError(true);
+      toast.error("Please accept the Terms of Service and Privacy Policy to continue");
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     const urlRole = searchParams.get("role");
@@ -39,7 +49,7 @@ export default function SignupContent() {
   }, [searchParams]);
 
   const handleSignup = async () => {
-    if (!acceptedTerms) return;
+    if (!requireTermsAccepted()) return;
 
     if (!email || !password) {
       toast.error("Please fill in all fields");
@@ -75,7 +85,7 @@ export default function SignupContent() {
   };
 
   const handleGoogle = async () => {
-    if (!acceptedTerms) return;
+    if (!requireTermsAccepted()) return;
 
     const normalizedRole = role.toLowerCase();
 
@@ -308,11 +318,17 @@ export default function SignupContent() {
           <div className="flex items-start gap-3 mt-5 px-0.5">
             <div
               className="flex items-center mt-0.5 cursor-pointer"
-              onClick={() => setAcceptedTerms(!acceptedTerms)}
+              onClick={() => {
+                const next = !acceptedTerms;
+                setAcceptedTerms(next);
+                if (next) setTermsError(false);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  setAcceptedTerms(!acceptedTerms);
+                  const next = !acceptedTerms;
+                  setAcceptedTerms(next);
+                  if (next) setTermsError(false);
                 }
               }}
               role="checkbox"
@@ -326,7 +342,9 @@ export default function SignupContent() {
                     ? role === "recruiter"
                       ? "bg-red-600 border-red-600"
                       : "bg-blue-600 border-blue-600"
-                    : "border-gray-300 bg-white"
+                    : termsError
+                      ? "border-red-500 bg-red-50 ring-2 ring-red-200"
+                      : "border-gray-300 bg-white"
                 }`}
               >
                 {acceptedTerms && (
@@ -358,14 +376,12 @@ export default function SignupContent() {
           <div className="space-y-3.5 mt-6">
             <button
               onClick={handleSignup}
-              disabled={loading || !acceptedTerms}
-              className={`w-full text-white py-3.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all duration-300 active:scale-[0.98] ${
-                !acceptedTerms
-                  ? "opacity-25 cursor-not-allowed bg-black"
-                  : role === "recruiter"
-                    ? "bg-red-600 hover:bg-red-700 shadow-md shadow-red-600/10"
-                    : "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/10"
-              }`}
+              disabled={loading}
+              className={`w-full text-white py-3.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all duration-300 active:scale-[0.98] cursor-pointer ${
+                role === "recruiter"
+                  ? "bg-red-600 hover:bg-red-700 shadow-md shadow-red-600/10"
+                  : "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/10"
+              } ${loading ? "opacity-70" : ""}`}
             >
               {loading ? "Creating..." : "Continue"}
             </button>
@@ -378,12 +394,7 @@ export default function SignupContent() {
 
             <button
               onClick={handleGoogle}
-              disabled={!acceptedTerms}
-              className={`w-full border border-gray-200 py-3.5 rounded-xl text-sm font-bold text-gray-700 bg-white flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.98] ${
-                !acceptedTerms
-                  ? "opacity-35 cursor-not-allowed"
-                  : "hover:bg-gray-50 hover:border-gray-300"
-              }`}
+              className={`w-full border border-gray-200 py-3.5 rounded-xl text-sm font-bold text-gray-700 bg-white flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.98] cursor-pointer hover:bg-gray-50 hover:border-gray-300`}
             >
               {/* Google Logo */}
               <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
